@@ -163,6 +163,44 @@ export function botByKey(key: string): BotDef | undefined {
   return BOTS.find((b) => b.key === key);
 }
 
+/* ---------------------------- Battle tiers ---------------------------- */
+
+export interface BattleTierDef {
+  name: string;
+  minWins: number;
+  /** warna aksen kecil — semantik progresi, bukan dekorasi */
+  color: string;
+}
+
+export const BATTLE_TIERS: BattleTierDef[] = [
+  { name: "Bronze", minWins: 0, color: "#b07d4f" },
+  { name: "Silver", minWins: 2, color: "#9aa3ad" },
+  { name: "Gold", minWins: 5, color: "#c9971f" },
+  { name: "Platinum", minWins: 10, color: "#5fa8a0" },
+  { name: "Diamond", minWins: 18, color: "#6b8fd8" },
+  { name: "Master", minWins: 28, color: "#a86bd8" },
+  { name: "Grandmaster", minWins: 40, color: "#d8536b" },
+];
+
+export function tierFromWins(wins: number): BattleTierDef {
+  let t = BATTLE_TIERS[0];
+  for (const tier of BATTLE_TIERS) if (wins >= tier.minWins) t = tier;
+  return t;
+}
+
+/** Skill label per world — dipakai di Skill Progress & Skill Matrix. */
+export const WORLD_SKILL: Record<number, string> = {
+  1: "FONDASI",
+  2: "SCHEMA",
+  3: "SELECT",
+  4: "FILTER",
+  5: "SORT",
+  6: "CRUD",
+  7: "RELASI",
+  8: "JOIN",
+  9: "AGREGASI",
+};
+
 /* ------------------------------ Avatars ------------------------------ */
 
 export const AVATAR_OPTIONS = [

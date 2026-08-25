@@ -11,6 +11,8 @@ export type LessonBlock =
   | { type: "code"; code: string; caption?: string }
   | { type: "callout"; text: string; tone: "info" | "warn" | "fun" }
   | { type: "analogy"; title: string; text: string }
+  | { type: "buatApa"; text: string }
+  | { type: "note"; text: string }
   | { type: "quiz"; question: string; options: string[]; answer: number; explain: string };
 
 export interface Exercise {
@@ -440,6 +442,10 @@ export const WORLDS: World[] = [
         5,
         [
           { type: "heading", text: "Kenalan sama SELECT 👀" },
+          {
+            type: "buatApa",
+            text: "SELECT dipakai setiap kali kamu butuh MELIHAT data — laporan, pencarian, dashboard. Nggak ada SELECT, nggak ada yang bisa dibaca.",
+          },
           { type: "text", text: "Database sekolah bisa punya ribuan data siswa. Masa kita buka satu-satu? Bisa lulus duluan sebelum selesai. 😭 Nah, SELECT tugasnya mengambil data yang kita butuhkan." },
           { type: "code", code: "SELECT * FROM students;", caption: "* dibaca 'semua kolom'" },
           { type: "text", text: "Bacanya: SELECT → ambil, * → semua kolom, FROM → dari, students → tabel students. Artinya: 'Ambil semua data dari tabel students.'" },
@@ -468,8 +474,12 @@ export const WORLDS: World[] = [
         "The Power of WHERE",
         6,
         [
-          { type: "heading", text: "Filter itu kekuatan super 🔍" },
-          { type: "text", text: "Ambil semua data itu gampang. Seni sebenarnya adalah ambil SEBAGIAN data yang relevan. Di sinilah WHERE masuk." },
+        { type: "heading", text: "Filter itu kekuatan super 🔍" },
+        {
+          type: "buatApa",
+          text: "WHERE dipakai saat pertanyaannya spesifik: 'siswa XI PPLG 1 saja', 'nilai di atas 80 saja'. Tanpa WHERE, kamu selalu dapat SEMUA data — dan itu bukan jawaban.",
+        },
+        { type: "text", text: "Ambil semua data itu gampang. Seni sebenarnya adalah ambil SEBAGIAN data yang relevan. Di sinilah WHERE masuk." },
           { type: "code", code: "SELECT * FROM students\nWHERE class_id = 3;", caption: "Hanya siswa dengan class_id 3 (XI PPLG 1)" },
           { type: "text", text: "Operator pembanding yang tersedia: = != > < >= <=. Dan bisa digabung: AND (dua-duanya harus benar), OR (salah satu cukup)." },
           { type: "callout", text: "Satu tanda '=' sudah berarti 'sama dengan' di SQL. Bukan '==', bukan ':='. Santai aja. 😌", tone: "info" },
@@ -558,6 +568,10 @@ export const WORLDS: World[] = [
     lessons: [
       lesson("w8-l1", "INNER JOIN", 7, [
         { type: "heading", text: "Dua tabel jadi satu 🤝" },
+        {
+          type: "buatApa",
+          text: "JOIN dipakai saat data yang kita butuhkan tersebar di beberapa tabel — nama siswa di students, nama kelasnya di classes. Satu query, satu jawaban utuh.",
+        },
         { type: "text", text: "Data sering tersebar di beberapa tabel (itu bagus!). JOIN menyatukannya saat dibutuhkan. INNER JOIN hanya mengambil baris yang PUNYA pasangan di kedua sisi." },
         { type: "code", code: "SELECT students.name, classes.name AS class_name\nFROM students\nINNER JOIN classes\n  ON students.class_id = classes.id;" },
         { type: "callout", text: "Saat dua tabel punya kolom bernama sama (misal 'name'), kasih alias AS biar hasilnya jelas.", tone: "info" },
@@ -579,7 +593,15 @@ export const WORLDS: World[] = [
     lessons: [
       lesson("w9-l1", "COUNT & GROUP BY", 7, [
         { type: "heading", text: "Dari barisan baris ke ringkasan 📊" },
+        {
+          type: "buatApa",
+          text: "COUNT & GROUP BY dipakai untuk menjawab pertanyaan manajerial: 'berapa siswa per kelas?', 'produk apa yang paling laku?'. Data mentah jadi keputusan.",
+        },
         { type: "text", text: "Agregasi mengubah banyak baris jadi satu angka ringkasan. COUNT menghitung, GROUP BY membentuk kelompoknya — satu baris hasil per grup." },
+        {
+          type: "note",
+          text: "SELECT * oke untuk latihan. Untuk production, ambil kolom yang memang dibutuhkan — lebih cepat dan hasilnya gampang dibaca.",
+        },
         { type: "code", code: "SELECT class_id, COUNT(*) AS total\nFROM students\nGROUP BY class_id;" },
       ], ["w9-count-per-class"]),
       lesson("w9-l2", "SUM, AVG, MIN, MAX", 6, [
