@@ -7,12 +7,16 @@ export const ROLES = {
   ADMIN: "admin",
   USER: "user",
   MEMBER: "member",
+  STUDENT: "student",
+  TEACHER: "teacher",
 } as const;
 
 export const roleValidator = v.union(
   v.literal(ROLES.ADMIN),
   v.literal(ROLES.USER),
   v.literal(ROLES.MEMBER),
+  v.literal(ROLES.STUDENT),
+  v.literal(ROLES.TEACHER),
 );
 export type Role = Infer<typeof roleValidator>;
 
@@ -30,14 +34,66 @@ const schema = defineSchema(
       isAnonymous: v.optional(v.boolean()), // is the user anonymous. do not remove
 
       role: v.optional(roleValidator), // role of the user. do not remove
-    }).index("email", ["email"]), // index for the email. do not remove or modify
 
-    // add other tables here
+      // Database Quest Warrior profile
+      username: v.optional(v.string()), // normalized lowercase, unique
+      className: v.optional(v.string()),
+      avatarEmoji: v.optional(v.string()),
+      onboarded: v.optional(v.boolean()),
+    })
+      .index("email", ["email"]) // index for the email. do not remove or modify
+      .index("username", ["username"]),
 
-    // tableName: defineTable({
-    //   ...
-    //   // table fields
-    // }).index("by_field", ["field"])
+    // Per-student gamification state. Server-side only — clients never write
+    // XP/score/rating directly.
+    studentStats: defineTable({
+      userId: v.id("users"),
+      xp: v.number(),
+      coins: v.number(),
+      streak: v.number(),
+      longestStreak: v.number(),
+      lastActiveDate: v.optional(v.string()), // YYYY-MM-DD
+      lessonsCompleted: v.number(),
+      exercisesDone: v.number(),
+      exercisesCorrect: v.number(),
+      queriesRun: v.number(),
+      botWins: v.number(),
+      botLosses: v.number(),
+      todayDate: v.optional(v.string()),
+      todayExercises: v.number(),
+      todayCorrect: v.number(),
+      badges: v.array(v.string()),
+    }).index("by_user", ["userId"]),
+
+    lessonProgress: defineTable({
+      userId: v.id("users"),
+      lessonId: v.string(),
+      status: v.string(), // "completed"
+      completedAt: v.number(),
+    })
+      .index("by_user_lesson", ["userId", "lessonId"])
+      .index("by_user", ["userId"]),
+
+    exerciseAttempts: defineTable({
+      userId: v.id("users"),
+      exerciseId: v.string(),
+      queryText: v.string(),
+      isCorrect: v.boolean(),
+      hintsUsed: v.number(),
+      xpEarned: v.number(),
+      at: v.number(),
+    })
+      .index("by_user_exercise", ["userId", "exerciseId"])
+      .index("by_user", ["userId"]),
+
+    battleLogs: defineTable({
+      userId: v.id("users"),
+      botKey: v.string(),
+      won: v.boolean(),
+      xpEarned: v.number(),
+      elapsedSeconds: v.number(),
+      at: v.number(),
+    }).index("by_user", ["userId"]),
   },
   {
     schemaValidation: false,

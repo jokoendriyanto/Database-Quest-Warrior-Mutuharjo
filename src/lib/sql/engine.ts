@@ -1,7 +1,7 @@
 /**
  * Mini SQL engine — a safe, in-memory subset of MySQL used for the
- * Database Quest SQL sandbox. Runs identically on client (instant preview)
- * and server (authoritative validation).
+ * Database Quest Warrior: Mutuharjo SQL sandbox. Runs identically on the
+ * client (instant preview) and on the server (authoritative validation).
  *
  * Supported:
  *   SELECT [DISTINCT] items FROM t
