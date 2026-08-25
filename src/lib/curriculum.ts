@@ -1,4 +1,4 @@
-import { kantinDb, schoolDb } from "@/lib/data/datasets";
+import { kantinDb, schoolDb } from "./data/datasets";
 
 /**
  * Kurikulum Database Quest Warrior: Mutuharjo

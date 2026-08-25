@@ -63,7 +63,9 @@ const schema = defineSchema(
       todayExercises: v.number(),
       todayCorrect: v.number(),
       badges: v.array(v.string()),
-    }).index("by_user", ["userId"]),
+    })
+      .index("by_user", ["userId"])
+      .index("by_xp", ["xp"]),
 
     lessonProgress: defineTable({
       userId: v.id("users"),

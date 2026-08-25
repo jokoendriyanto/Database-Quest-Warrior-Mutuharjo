@@ -1,4 +1,4 @@
-import type { Database } from "@/lib/sql/engine";
+import type { Database } from "../sql/engine";
 
 /**
  * Case Universe 01 — SEKOLAH

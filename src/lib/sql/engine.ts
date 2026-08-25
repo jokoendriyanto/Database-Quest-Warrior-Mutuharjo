@@ -178,7 +178,10 @@ function tokenize(sql: string): Token[] {
 
 class Parser {
   private pos = 0;
-  constructor(private tokens: Token[]) {}
+  private tokens: Token[];
+  constructor(tokens: Token[]) {
+    this.tokens = tokens;
+  }
   private peek(): Token | undefined { return this.tokens[this.pos]; }
   private next(): Token {
     const t = this.tokens[this.pos];
@@ -451,7 +454,7 @@ class Parser {
       this.next();
       this.expectOp("(");
       let arg: Expr | "*";
-      if (this.peek()?.value === "*") { this.next(); arg = { kind: "star" }; }
+      if (this.peek()?.value === "*") { this.next(); arg = "*"; }
       else arg = this.parseExpr();
       this.expectOp(")");
       return { kind: "agg", fn: t.value.toLowerCase(), arg };
@@ -551,7 +554,7 @@ function evalExpr(e: Expr, row: Row, tables: string[], aggRows?: Row[]): unknown
       if (!aggRows) throw new SqlError("ER_MISPLACED_AGG", `Fungsi agregat ${e.fn.toUpperCase()}() cuma bisa dipakai di SELECT.`);
       const rows = aggRows as (Row & { __tables__: string[] })[];
       if (e.fn === "count") {
-        if (e.arg.kind === "star") return rows.length;
+        if (e.arg === "*") return rows.length;
         return rows.filter((r) => evalExpr(e.arg as Expr, r, r.__tables__) != null).length;
       }
       const nums = rows
@@ -832,7 +835,7 @@ function exprLabel(e: Expr, baseName: string): string {
   switch (e.kind) {
     case "col": return e.name.includes(".") ? e.name.split(".").slice(1).join(".") : e.name;
     case "agg":
-      if (e.arg.kind === "star") return `${e.fn}(*)`;
+      if (e.arg === "*") return `${e.fn}(*)`;
       return `${e.fn}(${exprLabel(e.arg as Expr, baseName)})`;
     default: return "?column?";
   }
