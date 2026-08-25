@@ -1,363 +1,396 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useMutation } from "convex/react";
+import { Link } from "react-router";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { toast } from "sonner";
-import { motion, AnimatePresence } from "framer-motion";
-import { Swords, Timer, Play, RefreshCw, Users } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { BOTS, type BotDef } from "@/lib/game";
-import { battlePool, exerciseDataset, type Exercise } from "@/lib/curriculum";
+import { Play, Swords } from "lucide-react";
+import {
+  battlePool,
+  exerciseDataset,
+  getExercise,
+} from "@/lib/curriculum";
+import type { Exercise } from "@/lib/curriculum";
+import type { Database as SqlDatabase, RunResult } from "@/lib/sql/engine";
 import { runSql, SqlError } from "@/lib/sql/engine";
+import { BOTS, botByKey, tierFromWins, type BotDef } from "@/lib/game";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-type Phase = "lobby" | "countdown" | "active" | "result";
+type Phase = "home" | "countdown" | "fight" | "result";
 
-interface MatchOutcome {
+interface MatchResult {
+  correct: boolean;
   won: boolean;
-  copy: string;
-  xpAwarded: number;
-  playerSeconds: number;
+  botName: string;
   botFinishSec: number;
+  playerSeconds: number;
+  xpAwarded: number;
+  victoryCopy: string;
+}
+
+function fmt(sec: number): string {
+  return `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, "0")}`;
 }
 
 export default function BattlePage() {
-  const [phase, setPhase] = useState<Phase>("lobby");
+  const data = useQuery(api.game.dashboard);
+  const playBotMatch = useMutation(api.game.playBotMatch);
+  const pool = useMemo(() => battlePool(), []);
+
+  const [phase, setPhase] = useState<Phase>("home");
   const [bot, setBot] = useState<BotDef | null>(null);
   const [exercise, setExercise] = useState<Exercise | null>(null);
-  const [outcome, setOutcome] = useState<MatchOutcome | null>(null);
-  const pool = useMemo(() => battlePool(), []);
-  const playBotMatch = useMutation(api.game.playBotMatch);
+  const [countdown, setCountdown] = useState(3);
+  const [elapsed, setElapsed] = useState(0);
+  const [sql, setSql] = useState("");
+  const [preview, setPreview] = useState<{ res: RunResult | null; err: string | null }>({ res: null, err: null });
+  const [result, setResult] = useState<MatchResult | null>(null);
+  const [locking, setLocking] = useState(false);
+  const startRef = useRef(0);
+
+  /* ------------------------------ match flow ----------------------------- */
 
   const startMatch = (b: BotDef) => {
     const ex = pool[Math.floor(Math.random() * pool.length)];
     setBot(b);
     setExercise(ex);
-    setOutcome(null);
+    setSql(ex.starter);
+    setPreview({ res: null, err: null });
+    setResult(null);
+    setCountdown(3);
     setPhase("countdown");
   };
 
-  /* ------------------------------- LOBBY ------------------------------- */
-  if (phase === "lobby" || !bot || !exercise) {
-    return (
-      <div className="flex flex-col gap-6">
-        <header>
-          <h1 className="text-2xl font-black tracking-tight">⚔️ Battle Arena</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Lawan bot dulu buat panas. Realtime duel lawan siswa & turnamen? Segera hadir.
-          </p>
-        </header>
-
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {BOTS.map((b) => (
-            <motion.button
-              key={b.key}
-              whileHover={{ y: -3 }}
-              onClick={() => startMatch(b)}
-              className="clay p-5 text-left"
-            >
-              <div className="flex items-center justify-between">
-                <span
-                  className="grid size-12 place-items-center rounded-2xl text-2xl"
-                  style={{ backgroundColor: b.color }}
-                  aria-hidden
-                >
-                  {b.emoji}
-                </span>
-                <span className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-secondary-foreground">
-                  {b.difficulty}
-                </span>
-              </div>
-              <h3 className="mt-3 font-extrabold">{b.name}</h3>
-              <p className="mt-1 text-xs italic leading-relaxed text-muted-foreground">"{b.taunt}"</p>
-              <p className="mt-3 flex items-center gap-1.5 text-[11px] font-bold text-primary">
-                <Swords className="size-3.5" /> Menang pertama: +100 XP · rematch +10 XP
-              </p>
-            </motion.button>
-          ))}
-        </div>
-
-        <div className="clay flex flex-col items-center gap-2 p-6 text-center opacity-80 sm:flex-row sm:text-left">
-          <Users className="size-8 shrink-0 text-muted-foreground" />
-          <div>
-            <p className="font-extrabold">Realtime 1v1 & Turnamen — Segera Hadir 🏗️</p>
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              Duel langsung antar siswa dengan matchmaking peringkat sedang disiapkan.
-              Latihan dulu lawan bot ya!
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  /* ------------------------------ MATCH FLOW ---------------------------- */
-  if (phase === "result" && outcome) {
-    return (
-      <BattleResult
-        outcome={outcome}
-        botName={bot.name}
-        onRematch={() => startMatch(bot)}
-        onExit={() => setPhase("lobby")}
-      />
-    );
-  }
-
-  return (
-    <AnimatePresence mode="wait">
-      {phase === "countdown" ? (
-        <Countdown key="cd" onDone={() => setPhase("active")} />
-      ) : (
-        <MatchScreen
-          key={`${bot.key}-${exercise.id}`}
-          bot={bot}
-          exercise={exercise}
-          db={exerciseDataset(exercise.id)}
-          submitting={false}
-          onSubmit={async (sqlText, elapsedSeconds) => {
-            try {
-              // pratinjau lokal biar error syntax kelihatan instan
-              let localOk = true;
-              try {
-                runSql(sqlText, JSON.parse(JSON.stringify(exerciseDataset(exercise.id))));
-              } catch (e) {
-                if (e instanceof SqlError) {
-                  localOk = false;
-                  toast.error(e.message, {
-                    description: e.suggestion ?? undefined,
-                  });
-                }
-              }
-              const res = await playBotMatch({
-                botKey: bot.key,
-                exerciseId: exercise.id,
-                sqlText,
-                elapsedSeconds,
-              });
-              setOutcome({
-                won: res.won,
-                copy:
-                  !localOk && !res.correct
-                    ? "Query-nya belum jalan sempurna. Bedah hint di halaman Learn, lalu rematch ya!"
-                    : res.victoryCopy,
-                xpAwarded: res.xpAwarded,
-                playerSeconds: res.playerSeconds,
-                botFinishSec: res.botFinishSec,
-              });
-              setPhase("result");
-            } catch (err) {
-              toast.error(err instanceof Error ? err.message : "Battle gagal diproses.");
-            }
-          }}
-          onRematch={() => startMatch(bot)}
-          onExit={() => setPhase("lobby")}
-        />
-      )}
-    </AnimatePresence>
-  );
-}
-
-function Countdown({ onDone }: { onDone: () => void }) {
-  const [n, setN] = useState(3);
+  // hitung mundur 3-2-1 lalu mulai
   useEffect(() => {
-    if (n === 0) {
-      const t = setTimeout(onDone, 500);
-      return () => clearTimeout(t);
-    }
-    const t = setTimeout(() => setN((x) => x - 1), 800);
-    return () => clearTimeout(t);
-  }, [n, onDone]);
-  return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-      <div className="clay grid min-h-72 place-items-center p-10">
-        <motion.p
-          key={n}
-          initial={{ scale: 2.2, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className="text-7xl font-black text-primary"
-        >
-          {n === 0 ? "QUERY! ⚔️" : n}
-        </motion.p>
-      </div>
-    </motion.div>
-  );
-}
-
-function MatchScreen({
-  bot,
-  exercise,
-  db,
-  onSubmit,
-  onRematch,
-  onExit,
-}: {
-  bot: BotDef;
-  exercise: Exercise;
-  db: ReturnType<typeof exerciseDataset>;
-  submitting?: boolean;
-  outcome?: MatchOutcome | null;
-  onSubmit: (sql: string, elapsedSeconds: number) => Promise<void>;
-  onRematch: () => void;
-  onExit: () => void;
-}) {
-  const [sql, setSql] = useState("");
-  const [elapsed, setElapsed] = useState(0);
-  const [busy, setBusy] = useState(false);
-  const startedAt = useRef(Date.now());
-  const finishedRef = useRef(false);
-
-  // visual progres bot — hasil akhir tetap diputuskan server
-  const botFinish = useMemo(
-    () => bot.timeRange[0] + Math.random() * (bot.timeRange[1] - bot.timeRange[0]),
-    [bot],
-  );
-
-  useEffect(() => {
-    const t = setInterval(() => {
-      if (!finishedRef.current) {
-        setElapsed((Date.now() - startedAt.current) / 1000);
-      }
-    }, 100);
-    return () => clearInterval(t);
-  }, []);
-
-  const handleSubmit = async () => {
-    if (!sql.trim()) {
-      toast.error("Query-nya masih kosong nih. Tulis dulu dong 😄");
+    if (phase !== "countdown") return;
+    if (countdown === 0) {
+      startRef.current = performance.now();
+      setElapsed(0);
+      setPhase("fight");
       return;
     }
-    setBusy(true);
-    finishedRef.current = true;
+    const t = setTimeout(() => setCountdown((c) => c - 1), 700);
+    return () => clearTimeout(t);
+  }, [phase, countdown]);
+
+  // timer
+  useEffect(() => {
+    if (phase !== "fight") return;
+    const iv = setInterval(
+      () => setElapsed((performance.now() - startRef.current) / 1000),
+      100,
+    );
+    return () => clearInterval(iv);
+  }, [phase]);
+
+  const lockAnswer = async () => {
+    if (!bot || !exercise) return;
+    setLocking(true);
     try {
-      await onSubmit(sql, (Date.now() - startedAt.current) / 1000);
+      const seconds = (performance.now() - startRef.current) / 1000;
+      const r = await playBotMatch({
+        botKey: bot.key,
+        exerciseId: exercise.id,
+        sqlText: sql,
+        elapsedSeconds: seconds,
+      });
+      setResult({
+        correct: r.correct,
+        won: r.won,
+        botName: r.botName,
+        botFinishSec: r.botFinishSec,
+        playerSeconds: r.playerSeconds,
+        xpAwarded: r.xpAwarded,
+        victoryCopy: r.victoryCopy,
+      });
+      setPhase("result");
+    } catch (err) {
+      setPreview({ res: null, err: err instanceof Error ? err.message : "Gagal mengirim jawaban." });
     } finally {
-      setBusy(false);
+      setLocking(false);
     }
   };
 
-  const botPct = Math.min(100, (elapsed / botFinish) * 100);
+  const runLocal = () => {
+    if (!exercise) return;
+    try {
+      const res = runSql(sql, JSON.parse(JSON.stringify(exerciseDataset(exercise.id))));
+      setPreview({ res, err: null });
+    } catch (err) {
+      setPreview({
+        res: null,
+        err: err instanceof SqlError ? err.message : String(err),
+      });
+    }
+  };
 
-  return (
-    <div className="flex flex-col gap-4">
-      {/* scoreboard */}
-      <div className="clay p-4 sm:p-5">
-        <div className="flex items-end justify-between gap-3 sm:gap-6">
-          <PlayerSide name="Kamu" sub="SQL Challenger" progress={Math.min(100, (elapsed / Math.max(botFinish, 20)) * 60)} emoji="🧑‍💻" />
-          <div className="pb-1 text-center">
-            <p className="flex items-center justify-center gap-1 font-mono text-lg font-black tabular-nums text-primary sm:text-xl">
-              <Timer className="size-4" />
-              {elapsed.toFixed(1)}s
-            </p>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Best of 1</p>
+  /* -------------------------------- HOME -------------------------------- */
+
+  if (phase === "home" || !data) {
+    const tier = tierFromWins(data?.stats.botWins ?? 0);
+    return (
+      <div className="mx-auto max-w-3xl">
+        <header>
+          <p className="kicker text-battle">BATTLE ARENA</p>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight">
+            {tier.name}{" "}
+            <span className="font-mono text-sm font-medium text-muted-foreground">
+              · {data ? `${data.stats.botWins}W / ${data.stats.botLosses}L` : "…"}
+            </span>
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Praktik dulu lawan bot. Nanti giliran teman sekelas.
+          </p>
+        </header>
+
+        {/* VS BOT — satu-satunya mode aktif */}
+        <section className="mt-8" aria-labelledby="vs-bot">
+          <div className="flex items-baseline justify-between border-b border-border pb-2">
+            <h2 id="vs-bot" className="text-sm font-bold uppercase tracking-wide">VS BOT</h2>
+            <span className="font-mono text-[11px] text-muted-foreground">latihan — tanpa rating</span>
           </div>
-          <PlayerSide name={bot.name} sub={bot.difficulty} progress={botPct} emoji={bot.emoji} alignRight />
+          <ul className="divide-y divide-border">
+            {BOTS.map((b) => (
+              <li key={b.key} className="flex items-center gap-4 py-3">
+                {/* avatar geometris sederhana */}
+                <span
+                  aria-hidden
+                  className="grid size-9 shrink-0 place-items-center border font-mono text-sm font-bold"
+                  style={{ borderColor: b.color }}
+                >
+                  {b.name.charAt(0)}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold">{b.name}</p>
+                  <p className="font-mono text-[11px] text-muted-foreground">
+                    {b.difficulty.toUpperCase()} · respon {b.timeRange[0]}–{b.timeRange[1]}s
+                  </p>
+                </div>
+                <Button size="sm" variant="secondary" onClick={() => startMatch(b)}>
+                  <Play className="size-3.5" /> Lawan
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {/* Mode mendatang — jelas tertutup, bukan link mati */}
+        <section className="mt-8 space-y-2" aria-label="Mode mendatang">
+          {[
+            { name: "PRIVATE DUEL", desc: "Tantang temanmu 1v1 secara langsung." },
+            { name: "TOURNAMENT", desc: "SQL Cup #1 — bracket 16 pemain." },
+          ].map((m) => (
+            <div key={m.name} className="flex items-center gap-4 rounded-md border border-dashed border-border px-4 py-3 opacity-70">
+              <Swords className="size-4 text-muted-foreground" aria-hidden />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-muted-foreground">{m.name}</p>
+                <p className="truncate text-xs text-muted-foreground">{m.desc}</p>
+              </div>
+              <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                Segera hadir
+              </span>
+            </div>
+          ))}
+        </section>
+      </div>
+    );
+  }
+
+  /* ------------------------------ COUNTDOWN ------------------------------ */
+
+  if (phase === "countdown" && bot && exercise) {
+    return (
+      <div className="grid min-h-[60vh] place-items-center">
+        <div className="text-center">
+          <p className="kicker">MATCH FOUND</p>
+          <div className="mt-6 flex items-center justify-center gap-8">
+            <PlayerBadge name="KAMU" sub={`LV ${data.stats.exercisesDone}`} />
+            <span className="font-mono text-lg font-bold text-muted-foreground">VS</span>
+            <PlayerBadge name={bot.name.toUpperCase()} sub={bot.difficulty.toUpperCase()} color={bot.color} />
+          </div>
+          <p className="mt-8 font-mono text-5xl font-bold tabular-nums">
+            {countdown > 0 ? countdown : "GO"}
+          </p>
+          <p className="mt-3 font-mono text-xs text-muted-foreground">
+            {exercise.title}
+          </p>
         </div>
       </div>
+    );
+  }
 
-      {/* misi */}
-      <div className="clay-sm p-4">
-        <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Misi Battle</p>
-        <p className="mt-1 text-sm font-bold leading-relaxed">{exercise.instruction}</p>
-        <p className="mt-2 font-mono text-[11px] text-muted-foreground">
-          Tabel: {Object.keys(db).join(", ")}
-        </p>
+  /* -------------------------------- FIGHT -------------------------------- */
+
+  if (phase === "fight" && bot && exercise) {
+    const botBarPct = Math.min(95, (elapsed / bot.timeRange[1]) * 100);
+    return (
+      <div className="mx-auto max-w-4xl">
+        {/* scoreboard */}
+        <div className="rounded-lg border border-border bg-card">
+          <div className="flex items-stretch justify-between gap-4 px-4 py-3">
+            <ScoreSide name="KAMU" value={fmt(elapsed)} />
+            <div className="flex flex-col items-center justify-center">
+              <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                ROUND 1 · LIVE
+              </span>
+              <span className="font-mono text-2xl font-bold tabular-nums">{elapsed.toFixed(1)}s</span>
+            </div>
+            <ScoreSide name={bot.name.toUpperCase()} value={`${bot.timeRange[0]}–${bot.timeRange[1]}s`} align="right" color={bot.color} />
+          </div>
+          <div className="grid grid-cols-2 gap-x-4 px-4 pb-3">
+            <ProgressBar pct={Math.min(100, (elapsed / 120) * 100)} />
+            <ProgressBar pct={botBarPct} color={bot.color} />
+          </div>
+        </div>
+
+        {/* mission */}
+        <div className="mt-5">
+          <p className="kicker mb-1.5">MISSION</p>
+          <p className="max-w-prose text-sm leading-relaxed">{exercise.instruction}</p>
+        </div>
+
+        {/* editor — pusat perhatian */}
+        <div className="mt-4 overflow-hidden rounded-lg border border-border bg-card">
+          <div className="flex items-center justify-between border-b border-border bg-sidebar px-3 py-1.5">
+            <span className="font-mono text-[11px] font-semibold text-primary">battle.sql</span>
+            <button onClick={runLocal} className="font-mono text-[10px] text-muted-foreground hover:text-foreground">
+              test run ⌘↵
+            </button>
+          </div>
+          <textarea
+            value={sql}
+            onChange={(e) => setSql(e.target.value)}
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                e.preventDefault();
+                runLocal();
+              }
+            }}
+            spellCheck={false}
+            autoCapitalize="off"
+            rows={7}
+            aria-label="SQL battle editor"
+            className="block w-full resize-y bg-card p-3 font-mono text-sm outline-none"
+          />
+          {preview.err && (
+            <p className="border-t border-border px-3 py-1.5 font-mono text-xs text-destructive">
+              {preview.err}
+            </p>
+          )}
+          {preview.res && !preview.err && (
+            <p className="border-t border-border px-3 py-1.5 font-mono text-xs text-success">
+              ✓ jalan · {preview.res.kind === "select" ? `${preview.res.rows.length} rows` : preview.res.message} — yakin? kunci jawabanmu.
+            </p>
+          )}
+          <div className="flex items-center justify-between border-t border-border bg-sidebar px-3 py-2">
+            <span className="font-mono text-[10px] text-muted-foreground">
+              jawaban divalidasi server saat dikunci
+            </span>
+            <Button size="sm" onClick={lockAnswer} disabled={locking}>
+              {locking ? "Mengunci…" : "Kunci Jawaban"}
+            </Button>
+          </div>
+        </div>
       </div>
+    );
+  }
 
-      {/* editor */}
-      <div className="clay-sm overflow-hidden">
-        <textarea
-          value={sql}
-          onChange={(e) => setSql(e.target.value)}
-          spellCheck={false}
-          rows={4}
-          aria-label="Editor battle"
-          placeholder="-- Tulis query-mu di sini, cepat! ⏱️"
-          className="w-full resize-none bg-transparent p-4 font-mono text-sm outline-none"
-        />
-        <div className="flex justify-end border-t border-border/60 px-4 py-2.5">
-          <Button onClick={handleSubmit} disabled={busy} className="clay-btn rounded-xl bg-primary font-extrabold">
-            <Play className="size-4" /> {busy ? "Memeriksa..." : "SUBMIT!"}
+  /* -------------------------------- RESULT ------------------------------- */
+
+  if (phase === "result" && result && bot) {
+    return (
+      <div className="mx-auto max-w-xl">
+        <div className={cn("rounded-lg border p-6", result.won ? "border-success/50 bg-success/5" : "border-warning/50 bg-warning/5")}>
+          <p className={cn("kicker", result.won ? "text-success" : "text-warning")}>
+            {result.won ? "VICTORY" : "DEFEAT"}
+          </p>
+          <div className="mt-4 grid grid-cols-3 items-end gap-2 text-center">
+            <div>
+              <p className="font-mono text-2xl font-bold tabular-nums">{result.playerSeconds.toFixed(1)}s</p>
+              <p className="kicker mt-1">KAMU</p>
+            </div>
+            <span className="pb-4 font-mono text-xs text-muted-foreground">VS</span>
+            <div>
+              <p className="font-mono text-2xl font-bold tabular-nums" style={{ color: bot.color }}>
+                {result.botFinishSec}s
+              </p>
+              <p className="kicker mt-1">{bot.name.toUpperCase()}</p>
+            </div>
+          </div>
+          {!result.correct && (
+            <p className="mt-4 border-t border-border pt-3 text-sm text-muted-foreground">
+              Query belum sesuai — cek hint di lesson terkait, lalu rematch.
+            </p>
+          )}
+          <p className="mt-3 whitespace-pre-line text-sm text-secondary-foreground">{result.victoryCopy}</p>
+          {result.xpAwarded > 0 && (
+            <p className="mt-2 font-mono text-sm font-bold text-primary">+{result.xpAwarded} XP</p>
+          )}
+        </div>
+
+        <div className="mt-5 flex gap-2">
+          <Button onClick={() => startMatch(bot)}>Rematch</Button>
+          <Button variant="secondary" onClick={() => startMatch(bot)}>
+            Lawan bot lain
           </Button>
+          <Link
+            to="/dashboard"
+            className="ml-auto self-center text-sm text-muted-foreground hover:text-foreground"
+          >
+            ← Dashboard
+          </Link>
         </div>
       </div>
+    );
+  }
+
+  return null;
+}
+
+/* ------------------------------ small parts ------------------------------ */
+
+function PlayerBadge({ name, sub, color }: { name: string; sub: string; color?: string }) {
+  return (
+    <div className="min-w-24">
+      <span
+        aria-hidden
+        className="mx-auto block size-10 border"
+        style={{ borderColor: color ?? "var(--primary)" }}
+      />
+      <p className="mt-2 text-center font-mono text-sm font-bold tracking-wide">{name}</p>
+      <p className="text-center font-mono text-[10px] text-muted-foreground">{sub}</p>
     </div>
   );
 }
 
-/* ------------------------------- RESULT -------------------------------- */
-
-export function BattleResult({
-  outcome,
-  botName,
-  onRematch,
-  onExit,
-}: {
-  outcome: MatchOutcome;
-  botName: string;
-  onRematch: () => void;
-  onExit: () => void;
-}) {
-  return (
-    <motion.div initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="clay-flat p-8 text-center">
-      <p className="text-6xl" aria-hidden>{outcome.won ? "🏆" : "😤"}</p>
-      <h2 className={cn("mt-3 text-3xl font-black", outcome.won ? "text-green-600 dark:text-green-400" : "text-orange-500")}>
-        {outcome.won ? "VICTORY!" : "BELUM KALI INI"}
-      </h2>
-      <p className="mx-auto mt-2 max-w-md whitespace-pre-line text-sm font-semibold leading-relaxed text-muted-foreground">
-        {outcome.copy}
-      </p>
-      <div className="mx-auto mt-5 grid max-w-sm grid-cols-3 gap-2 text-center">
-        <Stat label="Waktumu" value={`${outcome.playerSeconds}s`} />
-        <Stat label={`${botName} selesai`} value={`${outcome.botFinishSec}s`} />
-        <Stat label="XP" value={outcome.xpAwarded > 0 ? `+${outcome.xpAwarded}` : "+0"} />
-      </div>
-      <div className="mt-6 flex flex-wrap justify-center gap-2.5">
-        <Button onClick={onRematch} className="clay-btn rounded-2xl bg-primary font-extrabold">
-          <RefreshCw className="size-4" /> Rematch
-        </Button>
-        <Button variant="secondary" onClick={onExit} className="rounded-2xl font-extrabold">
-          Back to Arena
-        </Button>
-      </div>
-    </motion.div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl bg-background/60 p-2.5 shadow-inner">
-      <p className="font-mono text-base font-black">{value}</p>
-      <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
-    </div>
-  );
-}
-
-function PlayerSide({
+function ScoreSide({
   name,
-  sub,
-  progress,
-  emoji,
-  alignRight,
+  value,
+  align = "left",
+  color,
 }: {
   name: string;
-  sub: string;
-  progress: number;
-  emoji: string;
-  alignRight?: boolean;
+  value: string;
+  align?: "left" | "right";
+  color?: string;
 }) {
   return (
-    <div className={cn("min-w-0 flex-1", alignRight && "text-right")}>
-      <p className={cn("flex items-center gap-1.5 truncate text-sm font-extrabold", alignRight && "justify-end")}>
-        {!alignRight && <span aria-hidden>{emoji}</span>}
-        {name}
-        {alignRight && <span aria-hidden>{emoji}</span>}
+    <div className={align === "right" ? "text-right" : ""}>
+      <p className="kicker">{name}</p>
+      <p className="mt-0.5 truncate font-mono text-xs" style={color ? { color } : undefined}>
+        {value}
       </p>
-      <p className="truncate text-[11px] font-bold text-muted-foreground">{sub}</p>
-      <div className="clay-inset mt-2 h-3 overflow-hidden rounded-full p-0.5">
-        <div
-          className={cn("h-full rounded-full transition-all duration-200", alignRight ? "ml-auto bg-red-400/80" : "bg-green-400/90")}
-          style={{ width: `${Math.min(100, progress)}%` }}
-        />
-      </div>
+    </div>
+  );
+}
+
+function ProgressBar({ pct, color }: { pct: number; color?: string }) {
+  return (
+    <div className="inset-track" role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100}>
+      <div
+        className="h-full transition-all duration-200"
+        style={{ width: `${Math.max(2, Math.min(100, pct))}%`, background: color ?? "var(--primary)" }}
+      />
     </div>
   );
 }

@@ -1,125 +1,149 @@
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Link } from "react-router";
-import { Flame, FolderKanban, Lock } from "lucide-react";
-import { levelProgress, rankFromLevel, BADGES } from "@/lib/game";
+import { BADGES, WORLD_SKILL, RANKS, levelProgress, tierFromWins } from "@/lib/game";
 import { cn } from "@/lib/utils";
 
 export default function ProfilePage() {
   const data = useQuery(api.game.dashboard);
 
   if (!data) {
-    return <div className="h-64 animate-pulse rounded-[calc(var(--radius)+0.5rem)] bg-muted/60" />;
+    return (
+      <div className="mx-auto max-w-3xl space-y-4" aria-busy>
+        <div className="h-24 animate-pulse rounded bg-muted" />
+        <div className="h-40 animate-pulse rounded bg-muted" />
+      </div>
+    );
   }
 
-  const { level } = levelProgress(data.stats.xp);
-  const rank = rankFromLevel(level);
+  const { user, stats, level, rank } = data;
+  const lp = levelProgress(stats.xp);
+  const nextRank = RANKS.find((r) => r.minLevel > level);
+  const tier = tierFromWins(stats.botWins);
   const accuracy =
-    data.stats.exercisesDone > 0
-      ? Math.round((data.stats.exercisesCorrect / data.stats.exercisesDone) * 100)
-      : null;
-  const winRate =
-    data.stats.botWins + data.stats.botLosses > 0
-      ? Math.round((data.stats.botWins / (data.stats.botWins + data.stats.botLosses)) * 100)
+    stats.exercisesDone > 0
+      ? Math.round((stats.exercisesCorrect / stats.exercisesDone) * 100)
       : null;
 
-  const stats: { v: string; l: string }[] = [
-    { v: data.stats.xp.toLocaleString(), l: "Total XP" },
-    { v: `Lv ${level}`, l: "Level" },
-    { v: `${rank.emoji} ${rank.name.split(" ")[0]}`, l: "Rank" },
-    { v: String(data.stats.queriesRun), l: "SQL dijalankan" },
-    { v: accuracy == null ? "-" : `${accuracy}%`, l: "Akurasi" },
-    { v: `${data.stats.lessonsCompleted}`, l: "Lesson tamat" },
-    { v: `${data.stats.exercisesCorrect}`, l: "Latihan benar" },
-    { v: `${winRate == null ? "-" : `${winRate}%`}`, l: "Win rate battle" },
-    { v: `${data.stats.longestStreak}`, l: "Streak terbaik" },
-  ];
+  const earned = new Set(stats.badges);
 
   return (
-    <div className="flex flex-col gap-5">
-      {/* identity */}
-      <section className="clay-flat flex flex-wrap items-center gap-5 p-6">
-        <span className="grid size-20 place-items-center rounded-3xl bg-background/70 text-5xl shadow-inner" aria-hidden>
-          {data.user.avatarEmoji}
-        </span>
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-black tracking-tight sm:text-2xl">{data.user.name}</h1>
-          <p className="text-sm font-bold text-muted-foreground">
-            @{data.user.username || "-"}
-            {data.user.className && ` · ${data.user.className}`}
-          </p>
-          <p className="mt-1.5 flex items-center gap-2 text-xs font-extrabold">
-            <span className="rounded-full bg-primary/10 px-3 py-1 text-primary">
-              {rank.emoji} {rank.name}
-            </span>
-            <span className="flex items-center gap-1 rounded-full bg-orange-100 px-3 py-1 text-orange-600 dark:bg-orange-950/60 dark:text-orange-300">
-              <Flame className="size-3" /> {data.stats.streak} hari
-            </span>
-          </p>
+    <div className="mx-auto max-w-3xl space-y-10">
+      {/* ---------- IDENTITY ---------- */}
+      <header>
+        <div className="flex items-start gap-4">
+          <span
+            aria-hidden
+            className="grid size-14 shrink-0 place-items-center border border-border bg-card text-2xl"
+          >
+            {user.avatarEmoji}
+          </span>
+          <div className="min-w-0">
+            <h1 className="truncate text-2xl font-bold tracking-tight">{user.name}</h1>
+            <p className="font-mono text-xs text-muted-foreground">
+              @{user.username || "—"}
+              {user.className ? ` · ${user.className}` : ""}
+            </p>
+            <p className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-[11px]">
+              <span className="font-semibold">
+                {rank.emoji} {rank.name}
+              </span>
+              <span className="text-muted-foreground">LV {level}</span>
+              <span style={{ color: tier.color }}>BATTLE: {tier.name.toUpperCase()}</span>
+            </p>
+          </div>
         </div>
-      </section>
 
-      {/* statistics */}
-      <section className="clay p-6">
-        <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Statistik</p>
-        <div className="mt-4 grid grid-cols-3 gap-2.5 text-center sm:grid-cols-3">
-          {stats.map((s) => (
-            <div key={s.l} className="rounded-2xl bg-muted/50 p-3">
-              <p className="truncate font-mono text-base font-black text-primary">{s.v}</p>
-              <p className="mt-0.5 text-[10px] font-bold leading-tight text-muted-foreground">{s.l}</p>
+        {/* ringkasan inline — bukan KPI cards */}
+        <dl className="mt-5 flex flex-wrap gap-x-8 gap-y-2 border-y border-border py-3 font-mono text-xs">
+          {[
+            ["TOTAL XP", stats.xp.toLocaleString()],
+            ["QUERIES", stats.queriesRun.toLocaleString()],
+            ["LESSON TAMAT", String(stats.lessonsCompleted)],
+            ["ACCURACY", accuracy != null ? `${accuracy}%` : "—"],
+            ["STREAK", `${stats.streak} hari (best ${stats.longestStreak})`],
+            ["BATTLE", `${stats.botWins}W / ${stats.botLosses}L`],
+          ].map(([k, v]) => (
+            <div key={k}>
+              <dt className="text-[10px] uppercase tracking-wider text-muted-foreground">{k}</dt>
+              <dd className="mt-0.5 text-sm font-bold tabular-nums">{v}</dd>
             </div>
           ))}
+        </dl>
+        <p className="mt-2 font-mono text-[11px] text-muted-foreground">
+          {lp.current.toLocaleString()} / {lp.needed.toLocaleString()} XP menuju LV{" "}
+          {level + 1}
+          {nextRank ? ` · ${nextRank.name} di LV ${nextRank.minLevel}` : " · rank maksimal"}
+        </p>
+        <div className="inset-track mt-1.5 max-w-md">
+          <div className="h-full bg-primary" style={{ width: `${Math.round((lp.current / lp.needed) * 100)}%` }} />
         </div>
+      </header>
+
+      {/* ---------- SKILLS ---------- */}
+      <section aria-labelledby="skills-h">
+        <h2 id="skills-h" className="kicker mb-3">SKILLS</h2>
+        {data.skillStats.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Belum ada data. Skill-mu terpetakan otomatis dari latihan yang kamu kerjakan.
+          </p>
+        ) : (
+          <ul className="space-y-2.5 max-w-md">
+            {data.skillStats.map((s) => (
+              <li key={s.worldNum} className="flex items-center gap-3">
+                <span className="w-20 shrink-0 font-mono text-xs font-semibold">
+                  {WORLD_SKILL[s.worldNum] ?? `W${s.worldNum}`}
+                </span>
+                <div className="inset-track flex-1">
+                  <div
+                    className={cn(
+                      "h-full",
+                      s.accuracy >= 85 ? "bg-success" : s.accuracy >= 50 ? "bg-primary" : "bg-warning",
+                    )}
+                    style={{ width: `${Math.max(4, s.accuracy)}%` }}
+                  />
+                </div>
+                <span className="w-12 shrink-0 text-right font-mono text-xs font-bold">
+                  {s.accuracy}%
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
-      {/* badges */}
-      <section className="clay p-6">
-        <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Koleksi Badge</p>
-        <p className="mt-1 text-xs font-bold text-muted-foreground">
-          {data.stats.badges.length}/{BADGES.length} terkumpul
-        </p>
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {/* ---------- ACHIEVEMENTS ---------- */}
+      <section aria-labelledby="badges-h">
+        <h2 id="badges-h" className="kicker mb-3">
+          ACHIEVEMENTS · {earned.size}/{BADGES.length}
+        </h2>
+        <ul className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-4">
           {BADGES.map((b) => {
-            const owned = data.stats.badges.includes(b.id);
+            const has = earned.has(b.id);
             return (
-              <div
-                key={b.id}
-                title={b.desc}
-                className={cn(
-                  "rounded-3xl p-4 text-center transition-transform hover:-translate-y-0.5",
-                  owned ? "clay-sm" : "bg-muted/40 opacity-60",
-                )}
-              >
-                <p className="text-3xl" aria-hidden>{owned ? b.icon : <Lock className="mx-auto size-6 text-muted-foreground" />}</p>
-                <p className="mt-1.5 text-xs font-extrabold leading-tight">{b.label}</p>
-                <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">{b.desc}</p>
-              </div>
+              <li key={b.id} className={cn(!has && "opacity-45")}>
+                <p className="text-xl leading-none" aria-hidden>{b.icon}</p>
+                <p className={cn("mt-1.5 text-[13px] font-semibold", !has && "text-muted-foreground")}>
+                  {has ? b.label : "???"}
+                </p>
+                <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{b.desc}</p>
+              </li>
             );
           })}
-        </div>
+        </ul>
       </section>
 
-      {/* portfolio placeholder */}
-      <section className="clay p-6">
-        <p className="flex items-center gap-1.5 text-xs font-black uppercase tracking-widest text-muted-foreground">
-          <FolderKanban className="size-4" /> Portfolio Proyek
-        </p>
-        <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
-          {[
-            { t: "Student Database", d: "World 1–3 · selesaikan SELECT Adventure untuk membuka" },
-            { t: "Kantin Digital", d: "Tamatkan boss 'Seblak Itu Beneran Laku?'" },
-            { t: "ML Tournament DB", d: "Segera hadir — World Relationship & JOIN" },
-            { t: "Final Capstone", d: "Menantimu di Final World: Database Developer 🏁" },
-          ].map((p) => (
-            <div key={p.t} className="rounded-2xl bg-muted/50 p-3.5">
-              <p className="text-sm font-extrabold">{p.t}</p>
-              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{p.d}</p>
-            </div>
-          ))}
+      {/* ---------- PORTFOLIO ---------- */}
+      <section aria-labelledby="portfolio-h">
+        <h2 id="portfolio-h" className="kicker mb-3">PORTFOLIO</h2>
+        <div className="rounded-lg border border-dashed border-border px-4 py-8 text-center">
+          <p className="text-sm text-muted-foreground">
+            Belum ada project yang disimpan di sini.
+          </p>
+          <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground/80">
+            Nanti, database yang kamu rancang di world Database Architect bisa dipajang
+            di bagian ini — lengkap dengan skema dan query andalanmu.
+          </p>
         </div>
-        <Link to="/learn" className="mt-4 inline-block text-xs font-extrabold text-primary hover:underline">
-          → Lanjut belajar buat buka proyek berikutnya
-        </Link>
       </section>
     </div>
   );

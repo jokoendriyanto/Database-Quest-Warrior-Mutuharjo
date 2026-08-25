@@ -293,6 +293,44 @@ export const dashboard = query({
       position = countHigher + 1;
     }
 
+    // aktivitas hari ini (UTC)
+    const dayStart = new Date();
+    dayStart.setUTCHours(0, 0, 0, 0);
+    const ts = dayStart.getTime();
+    const lessonsToday = progressRows.filter((r) => r.completedAt >= ts).length;
+
+    const myBattles = await ctx.db
+      .query("battleLogs")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    const battlesWonToday = myBattles.filter((b) => b.won && b.at >= ts).length;
+
+    // skill stats per world — dari attempt nyata, bukan angka karangan
+    const myAttempts = await ctx.db
+      .query("exerciseAttempts")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    const skillMap = new Map<
+      number,
+      { worldNum: number; attempts: number; correct: number }
+    >();
+    for (const a of myAttempts) {
+      const ex = EXERCISE_MAP.get(a.exerciseId);
+      if (!ex) continue;
+      const rec =
+        skillMap.get(ex.worldNum) ??
+        { worldNum: ex.worldNum, attempts: 0, correct: 0 };
+      rec.attempts++;
+      if (a.isCorrect) rec.correct++;
+      skillMap.set(ex.worldNum, rec);
+    }
+    const skillStats = [...skillMap.values()]
+      .map((s) => ({
+        ...s,
+        accuracy: Math.round((s.correct / Math.max(1, s.attempts)) * 100),
+      }))
+      .sort((a, b) => b.accuracy - a.accuracy);
+
     return {
       user: {
         name: user.name ?? "Petualang",
@@ -321,6 +359,9 @@ export const dashboard = query({
       rank: rankFromLevel(levelFromXp(stats.xp)),
       completedLessons,
       leaderboardPosition: position,
+      lessonsToday,
+      battlesWonToday,
+      skillStats,
       recentAttempts: recentAttempts.map((a) => ({
         exerciseId: a.exerciseId,
         isCorrect: a.isCorrect,
@@ -411,14 +452,31 @@ export const teacherOverview = query({
       });
     }
 
-    // topik tersulit: rasio gagal per latihan (min. 3 percobaan)
+    // satu kali baca semua attempt → dipakai untuk insights + skill matrix
     const attempts = await ctx.db.query("exerciseAttempts").collect();
+
+    // topik tersulit: rasio gagal per latihan (min. 3 percobaan)
     const byExercise = new Map<string, { total: number; fails: number }>();
+    // skill matrix per siswa per world (akurasi attempt nyata)
+    const byUserWorld = new Map<string, Map<number, { attempts: number; correct: number }>>();
     for (const a of attempts) {
       const rec = byExercise.get(a.exerciseId) ?? { total: 0, fails: 0 };
       rec.total++;
       if (!a.isCorrect) rec.fails++;
       byExercise.set(a.exerciseId, rec);
+
+      const ex = EXERCISE_MAP.get(a.exerciseId);
+      if (!ex) continue;
+      const key = String(a.userId);
+      let worlds = byUserWorld.get(key);
+      if (!worlds) {
+        worlds = new Map();
+        byUserWorld.set(key, worlds);
+      }
+      const w = worlds.get(ex.worldNum) ?? { attempts: 0, correct: 0 };
+      w.attempts++;
+      if (a.isCorrect) w.correct++;
+      worlds.set(ex.worldNum, w);
     }
     const insights = [...byExercise.entries()]
       .filter(([, v]) => v.total >= 3)
@@ -426,7 +484,18 @@ export const teacherOverview = query({
       .sort((a, b) => b.failRate - a.failRate)
       .slice(0, 5);
 
-    return { denied: false as const, students, insights };
+    const enriched = students.map((s) => {
+      const u = users.find((x) => x.username === s.username);
+      const worlds = u ? byUserWorld.get(String(u._id)) : undefined;
+      const worldSkills = worlds
+        ? [...worlds.entries()]
+            .map(([worldNum, w]) => ({ worldNum, accuracy: Math.round((w.correct / w.attempts) * 100) }))
+            .sort((a, b) => a.worldNum - b.worldNum)
+        : [];
+      return { ...s, worldSkills };
+    });
+
+    return { denied: false as const, students: enriched, insights };
   },
 });
 
