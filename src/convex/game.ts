@@ -14,7 +14,7 @@ import {
   rankFromLevel,
   levelFromXp,
 } from "../lib/game";
-import { getStats, awardXp, grantBadge, StatsDoc } from "./gameState";
+import { getStats, findStats, awardXp, grantBadge, StatsDoc } from "./gameState";
 
 /* --------------------------- shared helpers ---------------------------- */
 
@@ -265,7 +265,7 @@ export const dashboard = query({
     const user = await ctx.db.get(userId);
     if (!user) return null;
 
-    const stats = await getStats(ctx, userId);
+    const stats = await findStats(ctx, userId);
 
     const progressRows = await ctx.db
       .query("lessonProgress")

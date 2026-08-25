@@ -30,14 +30,41 @@ function yesterdayStr(): string {
   return d.toISOString().slice(0, 10);
 }
 
-/** Ambil stats user, buat baris baru kalau belum ada. */
-export async function getStats(
-  ctx: { db: QueryCtx["db"] & MutationCtx["db"] },
-  userId: any,
-): Promise<StatsDoc> {
+/** Stats kosong untuk dipakai di query read-only (tanpa menulis ke DB). */
+export function zeroStats(userId: any): StatsDoc {
+  return {
+    _id: "",
+    userId,
+    xp: 0,
+    coins: 0,
+    streak: 0,
+    longestStreak: 0,
+    lessonsCompleted: 0,
+    exercisesDone: 0,
+    exercisesCorrect: 0,
+    queriesRun: 0,
+    botWins: 0,
+    botLosses: 0,
+    todayExercises: 0,
+    todayCorrect: 0,
+    badges: [],
+  } as unknown as StatsDoc;
+}
+
+/** Baca stats tanpa menulis — aman dipanggil dari query. */
+export async function findStats(ctx: { db: any }, userId: any): Promise<StatsDoc> {
   const existing = await ctx.db
     .query("studentStats")
-    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .withIndex("by_user", (q: any) => q.eq("userId", userId))
+    .first();
+  return existing ? (existing as StatsDoc) : zeroStats(userId);
+}
+
+/** Ambil stats user, buat baris baru kalau belum ada. Mutation-only. */
+export async function getStats(ctx: { db: any }, userId: any): Promise<StatsDoc> {
+  const existing = await ctx.db
+    .query("studentStats")
+    .withIndex("by_user", (q: any) => q.eq("userId", userId))
     .first();
   if (existing) return existing as StatsDoc;
   const id = await ctx.db.insert("studentStats", {
