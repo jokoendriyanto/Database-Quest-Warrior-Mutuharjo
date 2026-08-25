@@ -125,7 +125,7 @@ export default function Onboarding() {
               ].map((r) => (
                 <li key={r.title} className="clay-sm flex items-start gap-3 p-3.5">
                   <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent text-accent-foreground">
-                    <r.icon className="size-4.5" />
+                    <r.icon className="size-5" />
                   </span>
                   <div>
                     <p className="text-sm font-extrabold">{r.title}</p>

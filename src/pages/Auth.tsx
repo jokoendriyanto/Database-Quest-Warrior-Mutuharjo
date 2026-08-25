@@ -121,12 +121,8 @@ function AuthInner() {
   async function fetchResolved(identifier: string): Promise<string | null> {
     const { ConvexHttpClient } = await import("convex/browser");
     const client = new ConvexHttpClient(import.meta.env.VITE_CONVEX_URL as string);
-    try {
-      const res = await client.query(api.profile.resolveIdentifier, { identifier });
-      return res?.email ?? null;
-    } finally {
-      client.close();
-    }
+    const res = await client.query(api.profile.resolveIdentifier, { identifier });
+    return res?.email ?? null;
   }
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {

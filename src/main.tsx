@@ -1,6 +1,7 @@
 import '@vly-ai/integrations';
 import { Toaster } from "@/components/ui/sonner";
 import { RequireAuth } from "@/components/RequireAuth";
+import { AppShell } from "@/components/AppShell";
 import { VlyToolbar } from "../vly-toolbar-readonly.tsx";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexReactClient } from "convex/react";
@@ -12,7 +13,14 @@ import "./index.css";
 // Lazy load route components for better code splitting
 const Landing = lazy(() => import("./pages/Landing.tsx"));
 const AuthPage = lazy(() => import("./pages/Auth.tsx"));
+const Onboarding = lazy(() => import("./pages/Onboarding.tsx"));
 const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
+const Learn = lazy(() => import("./pages/Learn.tsx"));
+const LessonPage = lazy(() => import("./pages/LessonPage.tsx"));
+const BattlePage = lazy(() => import("./pages/BattlePage.tsx"));
+const Leaderboard = lazy(() => import("./pages/Leaderboard.tsx"));
+const ProfilePage = lazy(() => import("./pages/ProfilePage.tsx"));
+const TeacherPage = lazy(() => import("./pages/TeacherPage.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 // Simple loading fallback for route transitions
@@ -103,7 +111,6 @@ function RouteSyncer() {
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
   }, []);
-
   return null;
 }
 
@@ -122,16 +129,32 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/" element={<Landing />} />
               <Route
                 path="/auth"
-                element={<AuthPage redirectAfterAuth="/dashboard" />}
+                element={<AuthPage />}
               />
               <Route
-                path="/dashboard"
+                path="/onboarding"
                 element={
                   <RequireAuth>
-                    <Dashboard />
+                    <Onboarding />
                   </RequireAuth>
                 }
               />
+              {/* Semua halaman terproteksi memakai shell aplikasi */}
+              <Route
+                element={
+                  <RequireAuth>
+                    <AppShell />
+                  </RequireAuth>
+                }
+              >
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/learn" element={<Learn />} />
+                <Route path="/lesson/:lessonId" element={<LessonPage />} />
+                <Route path="/battle" element={<BattlePage />} />
+                <Route path="/leaderboard" element={<Leaderboard />} />
+                <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/teacher" element={<TeacherPage />} />
+              </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
@@ -140,4 +163,4 @@ createRoot(document.getElementById("root")!).render(
       </ConvexAuthProvider>
     </RootErrorBoundary>
   </StrictMode>,
-);
+)

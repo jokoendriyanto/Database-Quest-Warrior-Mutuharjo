@@ -173,7 +173,7 @@ export function AppShell() {
             }
           >
             <Icon className="size-5" />
-            {label === "Dashboard" ? "Home" : label}
+            {label === "Dashboard" ? "Home" : label === "Leaderboard" ? "Rank" : label}
           </NavLink>
         ))}
       </nav>

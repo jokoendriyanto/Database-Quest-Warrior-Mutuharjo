@@ -11,14 +11,14 @@ import {
   getLesson,
   getExercise,
   LESSON_ORDER,
+  exerciseDataset,
   type LessonBlock,
 } from "@/lib/curriculum";
-import { exerciseDataset, schoolTables, kantinTables } from "@/lib/data/datasets";
+import { schoolTables, kantinTables } from "@/lib/data/datasets";
 import { cn } from "@/lib/utils";
 
 export default function LessonPage() {
   const { lessonId = "" } = useParams();
-  const navigate = useNavigate();
   const entry = getLesson(lessonId);
   const data = useQuery(api.game.dashboard);
   const completeLesson = useMutation(api.game.completeLesson);
@@ -65,7 +65,9 @@ export default function LessonPage() {
       if (!res.alreadyCompleted) {
         toast.success(`Lesson selesai! +${res.xpAwarded} XP 🎉`, {
           description:
-            res.levelAfter > res.levelBefore ? "LEVEL UP! Terus jaga momentumnya 🔥" : undefined,
+            (res.levelAfter ?? 0) > (res.levelBefore ?? 1)
+              ? "LEVEL UP! Terus jaga momentumnya 🔥"
+              : undefined,
         });
       }
       setLessonDoneTick(true);
