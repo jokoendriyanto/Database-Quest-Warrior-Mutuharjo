@@ -329,6 +329,288 @@ export const EXERCISES: Exercise[] = [
     xp: 200,
     dataset: "kantin",
   }),
+
+  /* ------------------------- W10 · Subquery Dungeon ---------------------- */
+  EX({
+    id: "w10-top-price",
+    worldNum: 10,
+    title: "Produk Termahal",
+    instruction:
+      "Subquery bisa nyari nilai ekstrem. Tapi di sandbox ini kita pakai jurus alternatif: urutkan `products` dari harga terbesar (ORDER BY price DESC), lalu ambil 1 baris saja. Tampilkan `name` dan `price`.",
+    difficulty: "normal",
+    starter: "SELECT name, price\nFROM products\nORDER BY ...\nLIMIT ...;\n",
+    solution: "SELECT name, price FROM products ORDER BY price DESC LIMIT 1;",
+    hints: [
+      "Ini padanan dari: SELECT ... WHERE price = (SELECT MAX(price) ...).",
+      "ORDER BY price DESC menaruh harga tertinggi di baris pertama.",
+      "Cukup LIMIT 1 — satu produk termahal.",
+      "Lengkapnya: SELECT name, price FROM products ORDER BY price DESC LIMIT 1;",
+    ],
+    xp: 100,
+    dataset: "kantin",
+  }),
+  EX({
+    id: "w10-cheapest-snack",
+    worldNum: 10,
+    title: "Snack Termurah",
+    instruction:
+      "Gabungkan dua jurus: filter dulu kategori snack (category_id = 3) dengan WHERE, lalu cari yang termurah lewat ORDER BY price ASC dan LIMIT 1. Tampilkan `name` dan `price`.",
+    difficulty: "hard",
+    starter: "SELECT name, price\nFROM products\nWHERE ...\nORDER BY ...\nLIMIT 1;\n",
+    solution: "SELECT name, price FROM products WHERE category_id = 3 ORDER BY price ASC LIMIT 1;",
+    hints: [
+      "Ini padanan dari: WHERE price = (SELECT MIN(price) ... WHERE category_id = 3).",
+      "WHERE dulu untuk mempersempit ke kategori snack.",
+      "ASC berarti menaik — harga termurah muncul duluan.",
+      "Lengkapnya: SELECT name, price FROM products WHERE category_id = 3 ORDER BY price ASC LIMIT 1;",
+    ],
+    xp: 100,
+    dataset: "kantin",
+  }),
+  EX({
+    id: "w10-max-subject",
+    worldNum: 10,
+    title: "Mapel Penyimpan Nilai Tertinggi",
+    instruction:
+      "Nilai tertinggi se-sekolah ada di mapel mana? Kelompokkan `scores` per `subject_id`, cari MAX(score) alias `tertinggi`, urutkan dari yang terbesar, ambil 1.",
+    difficulty: "hard",
+    starter: "SELECT subject_id, MAX(score) AS tertinggi\nFROM scores\nGROUP BY ...\nORDER BY ...\nLIMIT 1;\n",
+    solution: "SELECT subject_id, MAX(score) AS tertinggi FROM scores GROUP BY subject_id ORDER BY tertinggi DESC LIMIT 1;",
+    hints: [
+      "Pola dasarnya: GROUP BY subject_id lalu MAX(score).",
+      "Alias AS tertinggi bisa dipakai lagi di ORDER BY.",
+      "Urutkan menurun: ORDER BY tertinggi DESC, lalu LIMIT 1.",
+      "Lengkapnya: SELECT subject_id, MAX(score) AS tertinggi FROM scores GROUP BY subject_id ORDER BY tertinggi DESC LIMIT 1;",
+    ],
+    xp: 100,
+    dataset: "school",
+  }),
+
+  /* ------------------------ W11 · Database Architect --------------------- */
+  EX({
+    id: "w11-catalog",
+    worldNum: 11,
+    title: "Katalog Kelas PPLG",
+    instruction:
+      "Sebelum mendesain schema, kamu harus lancar membaca data yang sudah ada. Dari `classes`, tampilkan kolom `name` dan `grade` untuk major 'PPLG', urutkan berdasarkan nama kelas.",
+    difficulty: "normal",
+    starter: "SELECT name, grade\nFROM classes\nWHERE ...\nORDER BY ...;\n",
+    solution: "SELECT name, grade FROM classes WHERE major = 'PPLG' ORDER BY name ASC;",
+    hints: [
+      "Filter pakai WHERE major = 'PPLG' — ingat, string pakai kutip tunggal.",
+      "ORDER BY name ASC menyusun kelas alfabetis.",
+      "Kolom yang diminta cuma dua: name dan grade.",
+      "Lengkapnya: SELECT name, grade FROM classes WHERE major = 'PPLG' ORDER BY name ASC;",
+    ],
+    xp: 50,
+    dataset: "school",
+  }),
+  EX({
+    id: "w11-insert-junction",
+    worldNum: 11,
+    title: "Isi Tabel Perantara",
+    instruction:
+      "Tabel `scores` adalah tabel perantara many-to-many antara students dan subjects. Tari Ayu (student_id 13) baru saja mengambil Pemrograman Web (subject_id 2) dengan nilai 85. Masukkan sebagai baris baru: id 19.",
+    difficulty: "normal",
+    starter: "INSERT INTO scores (id, student_id, subject_id, score)\nVALUES (...);\n",
+    solution: "INSERT INTO scores (id, student_id, subject_id, score) VALUES (19, 13, 2, 85);",
+    hints: [
+      "Tabel perantara isinya cuma 'penunjuk': student_id dan subject_id adalah foreign key.",
+      "Struktur: INSERT INTO scores (kolom...) VALUES (nilai...).",
+      "Semua nilainya angka — tidak perlu kutip.",
+      "Lengkapnya: INSERT INTO scores (id, student_id, subject_id, score) VALUES (19, 13, 2, 85);",
+    ],
+    xp: 100,
+    dataset: "school",
+  }),
+  EX({
+    id: "w11-count-class-join",
+    worldNum: 11,
+    title: "Kapasitas Kelas Terisi",
+    instruction:
+      "Wali kelas butuh rekap: nama kelas dan jumlah siswanya. JOIN `students` dengan `classes` (ON students.class_id = classes.id), tampilkan `classes.name` dan COUNT(*) alias `jumlah`, kelompokkan per nama kelas, urutkan alfabetis.",
+    difficulty: "hard",
+    starter: "SELECT classes.name, COUNT(*) AS jumlah\nFROM students\nINNER JOIN classes ON ...\nGROUP BY ...\nORDER BY ...;\n",
+    solution: "SELECT classes.name, COUNT(*) AS jumlah FROM students INNER JOIN classes ON students.class_id = classes.id GROUP BY classes.name ORDER BY classes.name ASC;",
+    hints: [
+      "Kondisi JOIN-nya: ON students.class_id = classes.id.",
+      "Kelompokkan berdasarkan kolom yang ditampilkan: GROUP BY classes.name.",
+      "Urutkan alfabetis: ORDER BY classes.name ASC.",
+      "Lengkapnya: SELECT classes.name, COUNT(*) AS jumlah FROM students INNER JOIN classes ON students.class_id = classes.id GROUP BY classes.name ORDER BY classes.name ASC;",
+    ],
+    xp: 150,
+    dataset: "school",
+  }),
+
+  /* ------------------------- W12 · Normalization Lab --------------------- */
+  EX({
+    id: "w12-dup-buyers",
+    worldNum: 12,
+    title: "Deteksi Data Berulang",
+    instruction:
+      "Data pembeli yang berulang adalah gejala tabel belum ternormalisasi. Dari `transactions`, hitung berapa kali tiap `buyer_name` muncul (COUNT(*) alias `jumlah`), kelompokkan per buyer_name, urutkan dari yang terbanyak lalu nama alfabetis, ambil 3 teratas.",
+    difficulty: "hard",
+    starter: "SELECT buyer_name, COUNT(*) AS jumlah\nFROM transactions\nGROUP BY ...\nORDER BY ...\nLIMIT 3;\n",
+    solution: "SELECT buyer_name, COUNT(*) AS jumlah FROM transactions GROUP BY buyer_name ORDER BY jumlah DESC, buyer_name ASC LIMIT 3;",
+    hints: [
+      "GROUP BY buyer_name membentuk satu grup per pembeli.",
+      "ORDER BY bisa dua kolom: jumlah DESC dulu, baru buyer_name ASC sebagai pemecah seri.",
+      "Pola dua kolom di ORDER BY: ORDER BY jumlah DESC, buyer_name ASC.",
+      "Lengkapnya: SELECT buyer_name, COUNT(*) AS jumlah FROM transactions GROUP BY buyer_name ORDER BY jumlah DESC, buyer_name ASC LIMIT 3;",
+    ],
+    xp: 150,
+    dataset: "kantin",
+  }),
+  EX({
+    id: "w12-atomic-category",
+    worldNum: 12,
+    title: "Nilai Atom per Kategori",
+    instruction:
+      "1NF mensyaratkan nilai atom dan tanpa pengulangan grup. Latihan ringan: tampilkan daftar `category_id` unik yang punya produk di tabel `products`, urutkan menaik.",
+    difficulty: "easy",
+    starter: "SELECT DISTINCT ...\nFROM products\nORDER BY ...;\n",
+    solution: "SELECT DISTINCT category_id FROM products ORDER BY category_id ASC;",
+    hints: [
+      "DISTINCT membuang duplikat — pas untuk daftar kategori unik.",
+      "POSITION: DISTINCT ditulis tepat setelah SELECT.",
+      "Urutkan: ORDER BY category_id ASC.",
+      "Lengkapnya: SELECT DISTINCT category_id FROM products ORDER BY category_id ASC;",
+    ],
+    xp: 50,
+    dataset: "kantin",
+  }),
+
+  /* ------------------------- W13 · Performance Lab ----------------------- */
+  EX({
+    id: "w13-select-needed",
+    worldNum: 13,
+    title: "Ambil yang Perlu Saja",
+    instruction:
+      "Query cepat dimulai dari kebiasaan: jangan SELECT * kalau cuma butuh dua kolom. Tampilkan `name` dan `price` produk yang harganya <= 3000, urutkan dari termurah (pemecah seri: nama alfabetis).",
+    difficulty: "normal",
+    starter: "SELECT name, price\nFROM products\nWHERE ...\nORDER BY ...;\n",
+    solution: "SELECT name, price FROM products WHERE price <= 3000 ORDER BY price ASC, name ASC;",
+    hints: [
+      "Operator <= artinya 'kurang dari atau sama dengan'.",
+      "ORDER BY dua kolom: price ASC dulu, lalu name ASC biar seri jelas.",
+      "Tanpa SELECT * — cukup name dan price.",
+      "Lengkapnya: SELECT name, price FROM products WHERE price <= 3000 ORDER BY price ASC, name ASC;",
+    ],
+    xp: 100,
+    dataset: "kantin",
+  }),
+  EX({
+    id: "w13-top-sold",
+    worldNum: 13,
+    title: "Scan Sepincung Punya",
+    instruction:
+      "LIMIT bukan cuma buat papan peringkat — dia memangkas kerja scan database. Ambil 1 produk paling laku: tampilkan `name` dan `sold` dari `products`, urutkan penjualan menurun.",
+    difficulty: "easy",
+    starter: "SELECT name, sold\nFROM products\nORDER BY ...\nLIMIT ...;\n",
+    solution: "SELECT name, sold FROM products ORDER BY sold DESC LIMIT 1;",
+    hints: [
+      "Kolom sold menyimpan jumlah terjual.",
+      "DESC = dari besar ke kecil — terlaris di posisi pertama.",
+      "Cukup satu baris: LIMIT 1.",
+      "Lengkapnya: SELECT name, sold FROM products ORDER BY sold DESC LIMIT 1;",
+    ],
+    xp: 50,
+    dataset: "kantin",
+  }),
+  EX({
+    id: "w13-low-stock",
+    worldNum: 13,
+    title: "Laporan Stok Kritis",
+    instruction:
+      "Restock cepat butuh query cepat. Dari `products`, ambil `name` dan `stock` yang stock-nya di bawah 30, urutkan dari yang paling kritis (paling kecil), pemecah seri nama alfabetis.",
+    difficulty: "normal",
+    starter: "SELECT name, stock\nFROM products\nWHERE ...\nORDER BY ...;\n",
+    solution: "SELECT name, stock FROM products WHERE stock < 30 ORDER BY stock ASC, name ASC;",
+    hints: [
+      "Syaratnya: stock < 30.",
+      "Paling kritis = stok paling kecil = ORDER BY stock ASC.",
+      "Tambahkan name ASC sebagai pemecah seri.",
+      "Lengkapnya: SELECT name, stock FROM products WHERE stock < 30 ORDER BY stock ASC, name ASC;",
+    ],
+    xp: 100,
+    dataset: "kantin",
+  }),
+
+  /* --------------------------- W14 · Transaction ------------------------- */
+  EX({
+    id: "w14-safe-update",
+    worldNum: 14,
+    title: "Update Stok Aman",
+    instruction:
+      "Dalam transaction sungguhan, UPDATE stok selalu punya syarat yang pasti. Roti Bakar (id 8) baru dibeli — ubah stoknya menjadi tepat 18. Jangan lupa WHERE!",
+    difficulty: "normal",
+    starter: "UPDATE products\nSET ...\nWHERE ...;\n",
+    solution: "UPDATE products SET stock = 18 WHERE id = 8;",
+    hints: [
+      "Struktur: UPDATE tabel SET kolom = nilai WHERE syarat.",
+      "Syarat paling aman adalah primary key: WHERE id = 8.",
+      "SET cuma satu kolom: stock.",
+      "Lengkapnya: UPDATE products SET stock = 18 WHERE id = 8;",
+    ],
+    xp: 100,
+    dataset: "kantin",
+  }),
+  EX({
+    id: "w14-insert-tx",
+    worldNum: 14,
+    title: "Catat Transaksi Baru",
+    instruction:
+      "Setiap pembelian adalah satu baris yang harus konsisten. Sinta beli 2 Es Teh Manis (product_id 4) total 6000. Catat ke `transactions` sebagai id 15.",
+    difficulty: "normal",
+    starter: "INSERT INTO transactions (id, product_id, buyer_name, qty, total)\nVALUES (...);\n",
+    solution: "INSERT INTO transactions (id, product_id, buyer_name, qty, total) VALUES (15, 4, 'Sinta', 2, 6000);",
+    hints: [
+      "Sebutkan semua kolom secara eksplisit — kebiasaan aman.",
+      "String pakai kutip tunggal: 'Sinta'. Angka polos.",
+      "Perhatikan urutan kolom sama dengan urutan VALUES.",
+      "Lengkapnya: INSERT INTO transactions (id, product_id, buyer_name, qty, total) VALUES (15, 4, 'Sinta', 2, 6000);",
+    ],
+    xp: 100,
+    dataset: "kantin",
+  }),
+
+  /* ----------------------------- W15 · Security -------------------------- */
+  EX({
+    id: "w15-gmail-audit",
+    worldNum: 15,
+    title: "Audit Email Pribadi",
+    instruction:
+      "Data pribadi sekolah sebaiknya di domain resmi. Dari `students`, audit siapa saja yang emailnya berakhiran @gmail.com — tampilkan `name` dan `email`, urutkan alfabetis.",
+    difficulty: "normal",
+    starter: "SELECT name, email\nFROM students\nWHERE ...\nORDER BY ...;\n",
+    solution: "SELECT name, email FROM students WHERE email LIKE '%@gmail.com' ORDER BY name ASC;",
+    hints: [
+      "Pola akhiran pakai LIKE dengan % di depan: '%@gmail.com'.",
+      "Urutkan alfabetis: ORDER BY name ASC.",
+      "Dua kolom saja: name dan email.",
+      "Lengkapnya: SELECT name, email FROM students WHERE email LIKE '%@gmail.com' ORDER BY name ASC;",
+    ],
+    xp: 100,
+    dataset: "school",
+  }),
+  EX({
+    id: "w15-min-columns",
+    worldNum: 15,
+    title: "Least Privilege: Kolom Minimal",
+    instruction:
+      "Prinsip keamanan: ambil data seminimal mungkin. Tampilkan hanya `name` dan `subject` semua guru dari tabel `teachers`, urutkan alfabetis — tanpa SELECT *.",
+    difficulty: "easy",
+    starter: "SELECT ...\nFROM teachers\nORDER BY ...;\n",
+    solution: "SELECT name, subject FROM teachers ORDER BY name ASC;",
+    hints: [
+      "Ganti kebiasaan SELECT * dengan menyebut kolom eksplisit.",
+      "Kolomnya: name dan subject.",
+      "Urutkan: ORDER BY name ASC.",
+      "Lengkapnya: SELECT name, subject FROM teachers ORDER BY name ASC;",
+    ],
+    xp: 50,
+    dataset: "school",
+  }),
 ];
 
 export const EXERCISE_MAP = new Map(EXERCISES.map((e) => [e.id, e]));

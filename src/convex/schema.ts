@@ -96,6 +96,64 @@ const schema = defineSchema(
       elapsedSeconds: v.number(),
       at: v.number(),
     }).index("by_user", ["userId"]),
+
+    /* ------------------------- Private Duel (1v1) ------------------------ */
+    duels: defineTable({
+      code: v.string(), // kode 4 karakter untuk join
+      hostId: v.id("users"),
+      guestId: v.optional(v.id("users")),
+      exerciseId: v.string(), // dipilih server saat duel dibuat
+      status: v.union(
+        v.literal("waiting"),
+        v.literal("fighting"),
+        v.literal("finished"),
+      ),
+      hostSubmitted: v.optional(
+        v.object({ correct: v.boolean(), seconds: v.number() }),
+      ),
+      guestSubmitted: v.optional(
+        v.object({ correct: v.boolean(), seconds: v.number() }),
+      ),
+      winnerId: v.optional(v.id("users")),
+      isDraw: v.optional(v.boolean()),
+      startedAt: v.optional(v.number()),
+      createdAt: v.number(),
+    })
+      .index("by_code", ["code"])
+      .index("by_status", ["status"]),
+
+    /* --------------------------- Tournament ------------------------------ */
+    tournaments: defineTable({
+      name: v.string(),
+      status: v.union(
+        v.literal("open"),
+        v.literal("running"),
+        v.literal("finished"),
+      ),
+      hostId: v.id("users"),
+      maxSize: v.number(), // 4 / 8 / 16
+      players: v.array(v.id("users")),
+      // bracket flat: round 1 = babak pertama, slot 0..n
+      bracket: v.array(
+        v.object({
+          round: v.number(),
+          slot: v.number(),
+          playerA: v.optional(v.id("users")),
+          playerB: v.optional(v.id("users")),
+          exerciseId: v.optional(v.string()),
+          subA: v.optional(
+            v.object({ correct: v.boolean(), seconds: v.number() }),
+          ),
+          subB: v.optional(
+            v.object({ correct: v.boolean(), seconds: v.number() }),
+          ),
+          winner: v.optional(v.id("users")),
+        }),
+      ),
+      rounds: v.number(), // total babak
+      champion: v.optional(v.id("users")),
+      createdAt: v.number(),
+    }),
   },
   {
     schemaValidation: false,
