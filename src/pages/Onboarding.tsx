@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Navigate, useNavigate } from "react-router";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { AVATAR_OPTIONS } from "@/lib/game";
-import { Loader2, PartyPopper, ArrowRight, Flame, Trophy, Swords, Check } from "lucide-react";
+import { Loader2, PartyPopper, ArrowRight, Flame, Trophy, Swords, Check, Camera } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AvatarUpload } from "@/components/AvatarUpload";
+import type { Id } from "@/convex/_generated/dataModel";
 
 export default function Onboarding() {
   const { user, isLoading } = useAuth();
@@ -15,6 +17,7 @@ export default function Onboarding() {
 
   const [step, setStep] = useState(0);
   const [avatar, setAvatar] = useState<string | null>(null);
+  const [avatarUploaded, setAvatarUploaded] = useState(false);
   const [saving, setSaving] = useState(false);
 
   if (isLoading) {
@@ -32,12 +35,21 @@ export default function Onboarding() {
   const finish = async () => {
     setSaving(true);
     try {
-      await updateProfile({ avatarEmoji: avatar ?? "🦉", onboarded: true });
+      // Jika upload foto, jangan set avatarEmoji (biarkan default, foto sudah tersimpan)
+      await updateProfile({
+        avatarEmoji: avatarUploaded ? undefined : (avatar ?? "🦉"),
+        onboarded: true,
+      });
       navigate("/dashboard");
     } finally {
       setSaving(false);
     }
   };
+
+  const handleAvatarUploaded = useCallback(() => {
+    setAvatarUploaded(true);
+    setAvatar(null); // clear emoji selection
+  }, []);
 
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden bg-background">
@@ -85,22 +97,54 @@ SELECT * FROM journey WHERE student = '${firstName.toLowerCase()}';`}
             <p className="mt-1.5 text-sm text-muted-foreground">
               Ini wajahmu di leaderboard dan battle arena.
             </p>
-            <div className="mt-6 grid grid-cols-5 gap-2">
+
+            {/* Upload foto custom */}
+            <div className="mt-5 flex flex-col items-center rounded-lg border border-dashed border-primary/40 bg-accent/30 p-5">
+              <AvatarUpload
+                avatarUrl={null}
+                emoji={avatar ?? "🦉"}
+                onAvatarChange={(url) => {
+                  if (url) handleAvatarUploaded();
+                  else setAvatarUploaded(false);
+                }}
+                size="lg"
+              />
+              {avatarUploaded && (
+                <p className="mt-2 rounded-md border border-success/40 bg-success/10 px-3 py-1 font-mono text-[11px] text-success">
+                  ✓ Foto terupload — akan tampil di profil & leaderboard
+                </p>
+              )}
+            </div>
+
+            {/* Divider */}
+            <div className="relative my-5">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-border" />
+              </div>
+              <div className="relative flex justify-center">
+                <span className="bg-card px-3 font-mono text-[10px] text-muted-foreground">
+                  {avatarUploaded ? "ATAU GUNAKAN EMOJI" : "ATAU PILIH EMOJI"}
+                </span>
+              </div>
+            </div>
+
+            {/* Grid emoji */}
+            <div className="grid grid-cols-5 gap-2">
               {AVATAR_OPTIONS.map((a) => (
                 <button
                   key={a}
-                  onClick={() => setAvatar(a)}
+                  onClick={() => { setAvatar(a); setAvatarUploaded(false); }}
                   aria-label={`Pilih avatar ${a}`}
-                  aria-pressed={avatar === a}
+                  aria-pressed={avatar === a && !avatarUploaded}
                   className={cn(
                     "relative aspect-square rounded-lg border text-2xl transition-colors",
-                    avatar === a
+                    avatar === a && !avatarUploaded
                       ? "border-primary bg-accent"
                       : "border-border bg-card hover:border-muted-foreground/40",
                   )}
                 >
                   {a}
-                  {avatar === a && (
+                  {avatar === a && !avatarUploaded && (
                     <span className="absolute -right-1 -top-1 grid size-4 place-items-center rounded-full bg-primary text-primary-foreground">
                       <Check className="size-3" />
                     </span>
@@ -108,9 +152,14 @@ SELECT * FROM journey WHERE student = '${firstName.toLowerCase()}';`}
                 </button>
               ))}
             </div>
+
             <div className="mt-7 flex gap-2">
               <Button variant="ghost" onClick={() => setStep(0)} className="h-11">Kembali</Button>
-              <Button disabled={!avatar} onClick={() => setStep(2)} className="h-11 flex-1 font-bold sm:flex-none sm:px-8">
+              <Button
+                disabled={!avatar && !avatarUploaded}
+                onClick={() => setStep(2)}
+                className="h-11 flex-1 font-bold sm:flex-none sm:px-8"
+              >
                 Lanjut <ArrowRight className="size-4" />
               </Button>
             </div>
