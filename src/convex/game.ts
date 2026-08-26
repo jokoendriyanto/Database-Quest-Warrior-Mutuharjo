@@ -461,6 +461,7 @@ export const teacherOverview = query({
       if (daysInactive > 7) riskFlags.push("Tidak aktif > 7 hari");
       if (s.exercisesDone >= 3 && accuracy < 50) riskFlags.push("Accuracy < 50%");
       students.push({
+        userId: u._id,
         name: u.name ?? u.username ?? "?",
         username: u.username ?? "",
         className: u.className ?? "",

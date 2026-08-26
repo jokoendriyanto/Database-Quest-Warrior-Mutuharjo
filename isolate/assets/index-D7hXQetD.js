@@ -1,1 +1,0 @@
-import{c as e,C as t,g as o}from"./index-Bn_I9Dq2.js";const r=[["path",{d:"M5 12h14",key:"1ays0h"}],["path",{d:"m12 5 7 7-7 7",key:"xquz4c"}]],n=e("arrow-right",r),c=Object.freeze(Object.defineProperty({__proto__:null,BaseConvexClient:o,ConvexHttpClient:t},Symbol.toStringTag,{value:"Module"}));export{n as A,c as i};

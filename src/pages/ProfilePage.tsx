@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 
 export default function ProfilePage() {
   const data = useQuery(api.game.dashboard);
+  const duels = useQuery(api.battle.myDuelHistory);
 
   if (!data) {
     return (
@@ -53,8 +54,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* ringkasan inline — bukan KPI cards */}
-        <dl className="mt-5 flex flex-wrap gap-x-8 gap-y-2 border-y border-border py-3 font-mono text-xs">
+        {/* ringkasan inline — bukan KPI cards */}          <dl className="mt-5 flex flex-wrap gap-x-8 gap-y-2 border-y border-border py-3 font-mono text-xs">
           {[
             ["TOTAL XP", stats.xp.toLocaleString()],
             ["QUERIES", stats.queriesRun.toLocaleString()],
@@ -62,6 +62,7 @@ export default function ProfilePage() {
             ["ACCURACY", accuracy != null ? `${accuracy}%` : "—"],
             ["STREAK", `${stats.streak} hari (best ${stats.longestStreak})`],
             ["BATTLE", `${stats.botWins}W / ${stats.botLosses}L`],
+            ["DUEL RATING", `${stats.duelRating} (${stats.duelWins}W/${stats.duelLosses}L${stats.duelDraws ? `/${stats.duelDraws}D` : ""})`],
           ].map(([k, v]) => (
             <div key={k}>
               <dt className="text-[10px] uppercase tracking-wider text-muted-foreground">{k}</dt>
@@ -104,6 +105,47 @@ export default function ProfilePage() {
                 </div>
                 <span className="w-12 shrink-0 text-right font-mono text-xs font-bold">
                   {s.accuracy}%
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* ---------- DUEL HISTORY ---------- */}
+      <section aria-labelledby="duels-h">
+        <h2 id="duels-h" className="kicker mb-3">RIWAYAT DUEL 1V1</h2>
+        {!duels ? (
+          <div className="h-20 animate-pulse rounded bg-muted" />
+        ) : duels.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Belum pernah duel. Buka Battle Arena, bagikan kode 4 huruf, dan aduin skill dengan teman.
+          </p>
+        ) : (
+          <ul className="divide-y divide-border rounded-lg border border-border">
+            {duels.map((d, i) => (
+              <li key={i} className="flex items-center gap-3 px-4 py-2.5">
+                <span
+                  className={cn(
+                    "shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-wider",
+                    d.draw
+                      ? "bg-secondary text-muted-foreground"
+                      : d.won
+                        ? "bg-success/15 text-success"
+                        : "bg-destructive/10 text-destructive",
+                  )}
+                >
+                  {d.draw ? "DRAW" : d.won ? "WIN" : "LOSE"}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm">
+                    vs <span className="font-semibold">{d.opponentEmoji} {d.opponent}</span>
+                  </span>
+                  <span className="block truncate font-mono text-[10px] text-muted-foreground">
+                    {d.exerciseTitle}
+                    {d.mySeconds != null ? ` · ${d.mySeconds}s` : ""}
+                    {` · ${new Date(d.at).toLocaleDateString("id-ID")}`}
+                  </span>
                 </span>
               </li>
             ))}

@@ -272,6 +272,9 @@ export const submitDuel = mutation({
 
     // dua-duanya masuk → tentukan pemenang
     const { winnerId, draw } = fasterWinner(hostSubmitted, guestSubmitted, duel.hostId, duel.guestId!);
+    // anti-farm multiplier dihitung SEBELUM duel ini ditandai selesai,
+    // supaya duel ini sendiri tidak ikut terhitung
+    const mult = await duelXpMultiplier(ctx, duel.hostId, duel.guestId!);
     await ctx.db.patch(duel._id, {
       hostSubmitted,
       guestSubmitted,
@@ -290,7 +293,6 @@ export const submitDuel = mutation({
     );
 
     // XP dengan anti-farming: hanya pemenang/seri, dikali multiplier harian
-    const mult = await duelXpMultiplier(ctx, duel.hostId, duel.guestId!);
     let xpAwarded = 0;
     if (draw) {
       xpAwarded = await grantXp(ctx, userId, Math.round(DUEL_DRAW_XP * mult));

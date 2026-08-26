@@ -13,22 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from "@/components/ui/input-otp";
-import { Loader2, MailQuestion, UserRoundPen, ArrowRight } from "lucide-react";
+import { Loader2, UserRoundPen, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const CLASSES = [
-  "X PPLG 1",
-  "X PPLG 2",
-  "XI PPLG 1",
-  "XI PPLG 2",
-  "XII PPLG 1",
-  "XII PPLG 2",
-];
 
 function resolveRedirectAfterAuth(returnTo: string | null, fallback = "/dashboard") {
   if (returnTo?.startsWith("/") && !returnTo.startsWith("//")) return returnTo;
@@ -45,11 +31,6 @@ function AuthInner() {
   const [mode, setMode] = useState<"login" | "register">(
     modeParam === "register" ? "register" : "login",
   );
-  // login punya dua metode: password (default) atau kode email
-  const [loginMethod, setLoginMethod] = useState<"password" | "otp">("password");
-  const [step, setStep] = useState<"form" | "otp">("form");
-  const [pendingEmail, setPendingEmail] = useState("");
-  const [otp, setOtp] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,13 +47,17 @@ function AuthInner() {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"student" | "teacher">("student");
 
+  // kelas resmi dari database — dikelola guru/admin
+  const classes = useQuery(api.classes.list);
+  const classOptions = classes?.map((c) => c.name) ?? [];
+
   const completeProfile = useMutation(api.profile.completeProfile);
 
   useEffect(() => {
-    if (!authLoading && isAuthenticated && step === "form" && !registeringRef.current) {
+    if (!authLoading && isAuthenticated && !registeringRef.current) {
       navigate(redirect);
     }
-  }, [authLoading, isAuthenticated, step, navigate, redirect]);
+  }, [authLoading, isAuthenticated, navigate, redirect]);
 
   const usernameNorm = username.trim().toLowerCase();
   const usernameValid = /^[a-z0-9_]{3,20}$/.test(usernameNorm);
@@ -91,7 +76,7 @@ function AuthInner() {
     return res?.email ?? null;
   }
 
-  /* --------------------- login metode 1: password (default) -------------------- */
+  /* --------------------------- login: password --------------------------- */
 
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,61 +108,13 @@ function AuthInner() {
     }
   };
 
-  /* --------------------- login metode 2: kode email (opsional) ------------------ */
-
-  const startVerification = async (targetEmail: string) => {
-    await signIn("email-otp", { email: targetEmail });
-    setPendingEmail(targetEmail);
-    setStep("otp");
-    setOtp("");
-  };
-
-  const handleOtpLoginSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    const id = identifier.trim().toLowerCase();
-    if (!id) return;
-    setBusy(true);
-    try {
-      let targetEmail = id;
-      if (!id.includes("@")) {
-        const resolved = await fetchResolved(id);
-        if (!resolved) {
-          throw new Error(`Username \"${id}\" nggak ketemu. Coba cek lagi, atau daftar dulu ya!`);
-        }
-        targetEmail = resolved;
-      }
-      await startVerification(targetEmail);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Gagal mengirim kode.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleOtpVerify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    if (otp.length !== 6) return;
-    setBusy(true);
-    try {
-      await signIn("email-otp", { email: pendingEmail, code: otp });
-      navigate(redirect);
-    } catch {
-      setError("Kode verifikasi salah atau sudah kedaluwarsa. Coba lagi ya.");
-      setOtp("");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  /* ------------------- registrasi: langsung, tanpa kode OTP -------------------- */
+  /* ------------------ registrasi: langsung, tanpa kode OTP ---------------- */
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     if (!usernameAvailable) {
-      setError(`Username \"${usernameNorm}\" sudah dipakai. Coba yang lain ya.`);
+      setError(`Username "${usernameNorm}" sudah dipakai. Coba yang lain ya.`);
       return;
     }
     if (password.length < 8) {
@@ -276,11 +213,9 @@ WHERE effort > excuse;`}
               <button
                 key={m}
                 onClick={() => {
-                  if (step === "otp") return;
                   setMode(m);
                   setError(null);
                 }}
-                disabled={step === "otp"}
                 className={cn(
                   "rounded-md py-2 text-sm font-bold transition-colors",
                   mode === m
@@ -293,7 +228,7 @@ WHERE effort > excuse;`}
             ))}
           </div>
 
-          {step === "form" && mode === "login" && loginMethod === "password" && (
+          {mode === "login" && (
             <form onSubmit={handlePasswordLogin} className="mt-6 space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="identifier">Username atau Email</Label>
@@ -307,19 +242,7 @@ WHERE effort > excuse;`}
                 />
               </div>
               <div className="space-y-1.5">
-                <div className="flex items-baseline justify-between">
-                  <Label htmlFor="password">Password</Label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLoginMethod("otp");
-                      setError(null);
-                    }}
-                    className="font-mono text-[11px] text-muted-foreground transition-colors hover:text-primary"
-                  >
-                    lupa password?
-                  </button>
-                </div>
+                <Label htmlFor="password">Password</Label>
                 <Input
                   id="password"
                   type="password"
@@ -329,6 +252,9 @@ WHERE effort > excuse;`}
                   required
                   autoComplete="current-password"
                 />
+                <p className="text-xs text-muted-foreground">
+                  Lupa password? Hubungi gurumu — guru bisa mereset password dari halaman guru.
+                </p>
               </div>
               <Button type="submit" disabled={busy} className="h-11 w-full font-bold">
                 {busy ? <Loader2 className="size-4 animate-spin" /> : <>Masuk <ArrowRight className="size-4" /></>}
@@ -349,71 +275,7 @@ WHERE effort > excuse;`}
             </form>
           )}
 
-          {step === "form" && mode === "login" && loginMethod === "otp" && (
-            <form onSubmit={handleOtpLoginSubmit} className="mt-6 space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="otp-identifier">Username atau Email</Label>
-                <Input
-                  id="otp-identifier"
-                  placeholder="joko123 atau joko@example.com"
-                  value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
-                  required
-                  autoComplete="username"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Kode verifikasi 6 digit dikirim ke email kamu — masuk tanpa password.
-                </p>
-              </div>
-              <Button type="submit" disabled={busy} className="h-11 w-full font-bold">
-                {busy ? <Loader2 className="size-4 animate-spin" /> : <>Kirim Kode Email <MailQuestion className="size-4" /></>}
-              </Button>
-              <button
-                type="button"
-                onClick={() => {
-                  setLoginMethod("password");
-                  setError(null);
-                }}
-                className="w-full text-center text-xs text-muted-foreground transition-colors hover:text-foreground"
-              >
-                ← Kembali masuk dengan password
-              </button>
-            </form>
-          )}
-
-          {step === "otp" && (
-            <form onSubmit={handleOtpVerify} className="mt-6 space-y-4 text-center">
-              <MailQuestion className="mx-auto size-8 text-primary" />
-              <div>
-                <p className="font-bold">Cek email kamu</p>
-                <p className="mt-0.5 text-sm text-muted-foreground">
-                  Kami mengirim 6 digit kode ke{" "}
-                  <span className="font-semibold text-foreground">{pendingEmail}</span>
-                </p>
-              </div>
-              <div className="flex justify-center">
-                <InputOTP value={otp} onChange={setOtp} maxLength={6} disabled={busy}>
-                  <InputOTPGroup>
-                    {Array.from({ length: 6 }).map((_, i) => (
-                      <InputOTPSlot key={i} index={i} />
-                    ))}
-                  </InputOTPGroup>
-                </InputOTP>
-              </div>
-              <Button
-                type="submit"
-                disabled={busy || otp.length !== 6}
-                className="h-11 w-full font-bold"
-              >
-                {busy ? <Loader2 className="size-4 animate-spin" /> : <>Verifikasi & Masuk <ArrowRight className="size-4" /></>}
-              </Button>
-              <Button type="button" variant="ghost" className="w-full" onClick={() => setStep("form")} disabled={busy}>
-                Pakai email / akun lain
-              </Button>
-            </form>
-          )}
-
-          {step === "form" && mode === "register" && (
+          {mode === "register" && (
             <form onSubmit={handleRegisterSubmit} className="mt-6 space-y-3.5">
               <Field label="Nama Lengkap">
                 <Input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Andi Pratama" autoComplete="name" />
@@ -431,22 +293,27 @@ WHERE effort > excuse;`}
                   {!usernameValid
                     ? "3–20 karakter: huruf kecil, angka, underscore."
                     : usernameTakenResult === false
-                      ? `Username \"${usernameNorm}\" sudah dipakai`
+                      ? `Username "${usernameNorm}" sudah dipakai`
                       : "Username tersedia ✓"}
                 </p>
               </Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Kelas">
-                  <Select value={className} onValueChange={setClassName} required>
+                  <Select value={className} onValueChange={setClassName} required={classOptions.length > 0}>
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Pilih kelas" />
+                      <SelectValue placeholder={classes ? "Pilih kelas" : "Memuat…"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {CLASSES.map((c) => (
+                      {classOptions.map((c) => (
                         <SelectItem key={c} value={c}>{c}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {classes && classOptions.length === 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Belum ada kelas terdaftar — hubungi guru/admin.
+                    </p>
+                  )}
                 </Field>
                 <Field label="Daftar sebagai">
                   <Select value={role} onValueChange={(v) => setRole(v as "student" | "teacher")}>
@@ -494,7 +361,12 @@ WHERE effort > excuse;`}
               </div>
               <Button
                 type="submit"
-                disabled={busy || !usernameValid || usernameTakenResult === false || !className}
+                disabled={
+                  busy ||
+                  !usernameValid ||
+                  usernameTakenResult === false ||
+                  (classOptions.length > 0 && !className)
+                }
                 className="h-11 w-full font-bold"
               >
                 {busy ? <Loader2 className="size-4 animate-spin" /> : <>Buat Akun <UserRoundPen className="size-4" /></>}

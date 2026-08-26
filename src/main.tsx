@@ -21,6 +21,8 @@ const BattlePage = lazy(() => import("./pages/BattlePage.tsx"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard.tsx"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage.tsx"));
 const TeacherPage = lazy(() => import("./pages/TeacherPage.tsx"));
+const AssignmentsPage = lazy(() => import("./pages/AssignmentsPage.tsx"));
+const AdminPage = lazy(() => import("./pages/AdminPage.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 // Simple loading fallback for route transitions
@@ -153,7 +155,9 @@ createRoot(document.getElementById("root")!).render(
                 <Route path="/battle" element={<BattlePage />} />
                 <Route path="/leaderboard" element={<Leaderboard />} />
                 <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/assignments" element={<AssignmentsPage />} />
                 <Route path="/teacher" element={<TeacherPage />} />
+                <Route path="/admin" element={<AdminPage />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>

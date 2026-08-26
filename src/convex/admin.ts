@@ -5,8 +5,9 @@ import {
   createAccount,
   invalidateSessions,
 } from "@convex-dev/auth/server";
-import { action, mutation, query } from "./_generated/server";
+import { action, internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import { roleValidator } from "./schema";
 import { findStats, todayStr } from "./gameState";
 import { levelFromXp } from "../lib/game";
@@ -136,6 +137,16 @@ export const setClass = mutation({
 
 /* --------------------------- reset password ------------------------------- */
 
+/** Baca data dasar user dari dalam action (actions tidak punya ctx.db). */
+export const getUserBasic = internalQuery({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    const u = await ctx.db.get(userId);
+    if (!u) return null;
+    return { email: u.email ?? "", name: u.name ?? "", role: u.role ?? "student" };
+  },
+});
+
 /**
  * Guru/admin me-reset password siswa.
  * - Siswa sudah punya akun password  → secret di-update.
@@ -148,7 +159,7 @@ export const resetPassword = action({
   handler: async (ctx, { userId, newPassword }) => {
     const meId = await getAuthUserId(ctx);
     if (meId === null) throw new Error("Not authenticated");
-    const me = await ctx.db.get(meId);
+    const me = await ctx.runQuery(internal.admin.getUserBasic, { userId: meId });
     if (!me || (me.role !== "teacher" && me.role !== "admin")) {
       throw new Error("Hanya guru/admin yang bisa reset password.");
     }
@@ -156,7 +167,7 @@ export const resetPassword = action({
       throw new Error("Password baru minimal 8 karakter.");
     }
 
-    const target = await ctx.db.get(userId);
+    const target = await ctx.runQuery(internal.admin.getUserBasic, { userId });
     if (!target?.email) {
       throw new Error("Siswa ini tidak punya email terdaftar.");
     }
@@ -185,7 +196,7 @@ export const resetPassword = action({
     }
 
     // cabut semua sesi aktif — password lama tidak lagi berguna
-    await invalidateSessions(ctx, { userId });
+    await invalidateSessions(ctx, { userId: userId as any });
     return { ok: true };
   },
 });

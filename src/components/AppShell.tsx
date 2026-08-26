@@ -8,6 +8,8 @@ import {
   User,
   Flame,
   GraduationCap,
+  ClipboardCheck,
+  ShieldCheck,
   LogOut,
 } from "lucide-react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router";
@@ -27,6 +29,7 @@ const NAV_GROUPS: { group: string; items: NavItem[] }[] = [
     items: [
       { to: "/dashboard", label: "Dashboard", icon: Home },
       { to: "/learn", label: "Learn", icon: MapIcon },
+      { to: "/assignments", label: "Tugas", icon: ClipboardCheck },
     ],
   },
   {
@@ -169,6 +172,24 @@ export function AppShell() {
               </ul>
             </div>
           )}
+          {user?.role === "admin" && (
+            <div className="mb-4">
+              <p className="kicker mb-1 px-3">ADMIN</p>
+              <ul className="space-y-0.5">
+                <li>
+                  <NavLink to="/admin" className={navLinkClass}>
+                    {({ isActive }) => (
+                      <>
+                        {isActive && <ActiveDot />}
+                        <ShieldCheck className="size-4 shrink-0" strokeWidth={1.75} />
+                        Admin Console
+                      </>
+                    )}
+                  </NavLink>
+                </li>
+              </ul>
+            </div>
+          )}
         </nav>
 
         <SidebarXp />
@@ -243,6 +264,7 @@ function AppShellFooter() {
         <nav className="flex gap-8 text-xs" aria-label="Tautan footer">
           <ul className="space-y-1.5">
             <li><Link className="text-muted-foreground hover:text-foreground" to="/learn">Learn</Link></li>
+            <li><Link className="text-muted-foreground hover:text-foreground" to="/assignments">Tugas</Link></li>
             <li><Link className="text-muted-foreground hover:text-foreground" to="/battle">Battle</Link></li>
             <li><Link className="text-muted-foreground hover:text-foreground" to="/leaderboard">Leaderboard</Link></li>
           </ul>

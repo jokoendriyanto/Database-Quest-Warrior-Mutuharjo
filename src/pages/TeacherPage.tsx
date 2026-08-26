@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -7,6 +7,20 @@ import { getExercise } from "@/lib/curriculum";
 import { WORLD_SKILL } from "@/lib/game";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import AssignmentsPanel from "@/components/teacher/AssignmentsPanel";
+import ChallengesPanel from "@/components/teacher/ChallengesPanel";
+import PasswordResetPanel from "@/components/teacher/PasswordResetPanel";
+import ClassesPanel from "@/components/teacher/ClassesPanel";
+
+type Tab = "siswa" | "tugas" | "tantangan" | "password" | "kelas";
+
+const TABS: { key: Tab; label: string }[] = [
+  { key: "siswa", label: "Siswa" },
+  { key: "tugas", label: "Tugas" },
+  { key: "tantangan", label: "Tantangan" },
+  { key: "password", label: "Reset Password" },
+  { key: "kelas", label: "Kelas" },
+];
 
 type Student = {
   name: string;
@@ -41,6 +55,7 @@ function cellCls(v: number): string {
 
 export default function TeacherPage() {
   const q = useQuery(api.game.teacherOverview);
+  const [tab, setTab] = useState<Tab>("siswa");
 
   const students = useMemo(
     () => (q && !q.denied ? [...q.students].sort((a, b) => b.xp - a.xp) : []),
@@ -129,11 +144,40 @@ export default function TeacherPage() {
             {total} siswa terdaftar di Database Quest.
           </p>
         </div>
-        <Button variant="secondary" size="sm" onClick={exportCsv} disabled={total === 0}>
-          <Download className="size-3.5" /> Export CSV
-        </Button>
+        {tab === "siswa" && (
+          <Button variant="secondary" size="sm" onClick={exportCsv} disabled={total === 0}>
+            <Download className="size-3.5" /> Export CSV
+          </Button>
+        )}
       </header>
 
+      {/* ---------- TABS ---------- */}
+      <nav aria-label="Panel guru" className="-mt-6 flex flex-wrap gap-1 border-b border-border">
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => setTab(t.key)}
+            className={cn(
+              "-mb-px border-b-2 px-3 py-2 font-mono text-[11px] font-semibold uppercase tracking-wider transition-colors",
+              tab === t.key
+                ? "border-primary text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
+
+      {tab === "tugas" && <AssignmentsPanel />}
+      {tab === "tantangan" && <ChallengesPanel />}
+      {tab === "password" && <PasswordResetPanel />}
+      {tab === "kelas" && <ClassesPanel />}
+
+      {/* ---------- SISWA ---------- */}
+      {tab === "siswa" && (
+      <>
       {/* ---------- SUMMARY INLINE ---------- */}
       <dl className="grid grid-cols-2 gap-x-8 gap-y-3 border-y border-border py-4 sm:grid-cols-4">
         {[
@@ -293,6 +337,8 @@ export default function TeacherPage() {
             </section>
           )}
         </>
+      )}
+      </>
       )}
     </div>
   );
