@@ -14,7 +14,7 @@ export function AppFooter() {
           <p className="flex items-baseline gap-2">
             <span className="font-mono text-sm font-bold text-primary">dq:</span>
             <span className="text-sm font-extrabold tracking-tight">
-              Database Quest<span className="text-muted-foreground">: Mutuharjo</span>
+              Database Quest Warrior<span className="text-muted-foreground">: Mutuharjo</span>
             </span>
           </p>
           <p className="mt-2 max-w-xs text-sm leading-relaxed text-muted-foreground">
@@ -44,7 +44,7 @@ export function AppFooter() {
       <div className="border-t border-border/60">
         <div className="mx-auto max-w-[1440px] px-4 py-3 sm:px-6">
           <p className="font-mono text-[11px] text-muted-foreground">
-            © 2026 Database Quest: Mutuharjo · SMK Muhammadiyah 1 Sukoharjo · PPLG
+            © 2026 Database Quest Warrior: Mutuharjo · SMK Muhammadiyah 1 Sukoharjo · PPLG
           </p>
         </div>
       </div>

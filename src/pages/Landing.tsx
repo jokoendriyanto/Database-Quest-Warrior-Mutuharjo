@@ -28,7 +28,7 @@ export default function Landing() {
           <Link to="/" className="flex items-baseline gap-2">
             <span className="font-mono text-base font-bold text-primary">dq:</span>
             <span className="text-sm font-extrabold tracking-tight">
-              Database Quest<span className="text-muted-foreground">: Mutuharjo</span>
+              Database Quest Warrior<span className="text-muted-foreground">: Mutuharjo</span>
             </span>
           </Link>
           <nav className="hidden items-center gap-6 text-sm font-semibold text-muted-foreground md:flex">
@@ -56,7 +56,7 @@ export default function Landing() {
           <div>
             <p className="kicker">Platform belajar database · SMK PPLG</p>
             <h1 className="mt-4 text-4xl font-black uppercase leading-[1.05] tracking-tight sm:text-5xl">
-              Database Quest<span className="text-muted-foreground">:</span>{" "}
+              Database Quest Warrior<span className="text-muted-foreground">:</span>{" "}
               <span className="text-primary">Mutuharjo</span>
             </h1>
             <p className="mt-5 text-lg font-bold leading-snug">

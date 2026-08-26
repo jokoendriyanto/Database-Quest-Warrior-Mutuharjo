@@ -182,7 +182,7 @@ function AuthInner() {
               dq<span className="text-muted-foreground">:</span>
             </span>
             <span className="text-sm font-extrabold tracking-tight">
-              Database Quest<span className="text-muted-foreground">: Mutuharjo</span>
+              Database Quest Warrior<span className="text-muted-foreground">: Mutuharjo</span>
             </span>
           </Link>
         </div>
@@ -220,7 +220,7 @@ WHERE effort > excuse;`}
           {/* brand kecil untuk mobile */}
           <Link to="/" className="mb-6 flex items-center gap-2 lg:hidden">
             <span className="font-mono text-sm font-bold text-primary">dq:</span>
-            <span className="text-sm font-extrabold tracking-tight">Database Quest: Mutuharjo</span>
+            <span className="text-sm font-extrabold tracking-tight">Database Quest Warrior: Mutuharjo</span>
           </Link>
 
           {/* tabs */}
@@ -376,7 +376,7 @@ WHERE effort > excuse;`}
         </div>
 
         <footer className="mx-auto w-full max-w-md pt-8 text-xs text-muted-foreground">
-          Made With Love By MrStepen ( Joko Endriyanto ) · © 2026 Database Quest: Mutuharjo
+          Made With Love By MrStepen ( Joko Endriyanto ) · © 2026 Database Quest Warrior: Mutuharjo
         </footer>
       </main>
     </div>

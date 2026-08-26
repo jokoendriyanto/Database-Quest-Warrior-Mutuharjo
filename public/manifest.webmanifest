@@ -1,11 +1,11 @@
 {
-  "name": "freebuff.com application",
-  "short_name": "freebuff.com",
-  "description": "freebuff.com application",
+  "name": "Database Quest Warrior: Mutuharjo",
+  "short_name": "Quest Warrior",
+  "description": "Platform belajar SQL kompetitif untuk calon programmer — pecahkan kasus, adu skill, naik rank.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#000000",
+  "theme_color": "#0f766e",
   "icons": [
     {
       "src": "/logo.png",

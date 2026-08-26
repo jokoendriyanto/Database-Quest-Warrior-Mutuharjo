@@ -125,7 +125,7 @@ export function AppShell() {
             ▸_
           </span>
           <div className="leading-tight">
-            <p className="text-[13px] font-bold tracking-tight">Database Quest</p>
+            <p className="text-[13px] font-bold tracking-tight">Database Quest Warrior</p>
             <p className="kicker">Mutuharjo</p>
           </div>
         </Link>
@@ -185,7 +185,7 @@ export function AppShell() {
             <span aria-hidden className="font-mono text-base font-bold text-primary">
               ▸_
             </span>
-            <span className="text-sm font-bold tracking-tight">Database Quest</span>
+            <span className="text-sm font-bold tracking-tight">Database Quest Warrior</span>
           </Link>
           <TopbarStreak />
         </header>
@@ -235,7 +235,7 @@ function AppShellFooter() {
     <footer className="border-t border-border px-4 pb-24 pt-6 sm:px-6 lg:px-8 lg:pb-6">
       <div className="mx-auto grid max-w-[1200px] gap-4 sm:grid-cols-[1fr_auto_auto] sm:gap-12">
         <div>
-          <p className="text-sm font-bold">Database Quest</p>
+          <p className="text-sm font-bold">Database Quest Warrior</p>
           <p className="mt-0.5 max-w-xs text-xs text-muted-foreground">
             Belajar database dengan cara pecahin kasus beneran — lalu aduin skill di arena.
           </p>
@@ -254,7 +254,7 @@ function AppShellFooter() {
           </p>
           <p className="text-muted-foreground">( Joko Endriyanto )</p>
           <p className="mt-1.5 font-mono text-[10px] text-muted-foreground/70">
-            © 2026 Database Quest: Mutuharjo
+            © 2026 Database Quest Warrior: Mutuharjo
           </p>
         </div>
       </div>
