@@ -81,6 +81,60 @@ export const completeProfile = mutation({
   },
 });
 
+/** Generate upload URL untuk avatar — client upload langsung ke Convex storage. */
+export const generateAvatarUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) throw new Error("Not authenticated");
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+/** Simpan avatar hasil upload — terima storage ID, hapus file lama jika ada. */
+export const saveAvatar = mutation({
+  args: { storageId: v.string() },
+  handler: async (ctx, { storageId }) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) throw new Error("Not authenticated");
+
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("User not found");
+
+    // Hapus file lama jika ada
+    if (user.image) {
+      try {
+        await ctx.storage.delete(user.image as any);
+      } catch {
+        /* file mungkin sudah tidak ada */
+      }
+    }
+
+    await ctx.db.patch(userId, { image: storageId });
+    return { ok: true };
+  },
+});
+
+/** Hapus avatar — kembali ke emoji default. */
+export const removeAvatar = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) throw new Error("Not authenticated");
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("User not found");
+    if (user.image) {
+      try {
+        await ctx.storage.delete(user.image as any);
+      } catch {
+        /* ok */
+      }
+    }
+    await ctx.db.patch(userId, { image: undefined });
+    return { ok: true };
+  },
+});
+
 /** Update ringan: avatar saat onboarding, dsb. */
 export const updateProfile = mutation({
   args: {

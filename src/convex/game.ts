@@ -363,6 +363,7 @@ export const dashboard = query({
         username: user.username ?? "",
         className: user.className ?? "",
         avatarEmoji: user.avatarEmoji ?? "🦉",
+        avatarUrl: user.image ? await ctx.storage.getUrl(user.image) : null,
         onboarded: user.onboarded ?? false,
         role: user.role ?? "student",
       },

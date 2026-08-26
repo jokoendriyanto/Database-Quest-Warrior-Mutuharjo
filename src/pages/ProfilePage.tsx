@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -10,6 +11,7 @@ import {
 } from "lucide-react";
 import { BADGES, WORLD_SKILL, RANKS, levelProgress, tierFromWins } from "@/lib/game";
 import { cn } from "@/lib/utils";
+import { AvatarUpload } from "@/components/AvatarUpload";
 
 const DAY_LABELS = ["MIN", "SEN", "SEL", "RAB", "KAM", "JUM", "SAB"];
 
@@ -22,6 +24,11 @@ function dayLabel(date: string) {
 export default function ProfilePage() {
   const data = useQuery(api.game.dashboard);
   const duels = useQuery(api.battle.myDuelHistory);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  // Sinkronkan avatarUrl dari data server saat pertama load
+  const serverAvatarUrl = data?.user.avatarUrl ?? null;
+  // Reset local override saat data berubah (reactive)
+  const resolvedAvatarUrl = avatarUrl ?? serverAvatarUrl;
 
   if (!data) {
     return (
@@ -66,12 +73,12 @@ export default function ProfilePage() {
       {/* ================= HERO ================= */}
       <section className="panel p-5 sm:p-6" aria-labelledby="profile-name">
         <div className="flex items-start gap-4 sm:gap-5">
-          <span
-            aria-hidden
-            className="grid size-16 shrink-0 place-items-center border-2 border-primary/60 bg-card text-3xl sm:size-20 sm:text-4xl"
-          >
-            {user.avatarEmoji}
-          </span>
+          <AvatarUpload
+            avatarUrl={resolvedAvatarUrl}
+            emoji={user.avatarEmoji}
+            onAvatarChange={setAvatarUrl}
+            size="lg"
+          />
           <div className="min-w-0 flex-1">
             <p className="kicker">@{user.username || "petualang"}</p>
             <h1 id="profile-name" className="truncate text-2xl font-bold tracking-tight sm:text-3xl">

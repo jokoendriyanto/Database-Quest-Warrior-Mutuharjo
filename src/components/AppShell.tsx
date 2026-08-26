@@ -73,9 +73,13 @@ function SidebarXp() {
   return (
     <div className="border-t border-border px-3 py-3">
       <div className="flex items-center gap-2">
-        <span aria-hidden className="text-base leading-none">
-          {data.user.avatarEmoji}
-        </span>
+        {data.user.avatarUrl ? (
+          <img src={data.user.avatarUrl} alt="" className="size-6 shrink-0 object-cover" />
+        ) : (
+          <span aria-hidden className="text-base leading-none">
+            {data.user.avatarEmoji}
+          </span>
+        )}
         <div className="min-w-0 flex-1">
           <p className="truncate text-xs font-semibold">{data.user.name}</p>
           <p className="font-mono text-[10px] text-muted-foreground">

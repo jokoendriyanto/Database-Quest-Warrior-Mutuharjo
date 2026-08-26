@@ -122,12 +122,20 @@ export default function Dashboard() {
       <section className="panel-raised p-6 sm:p-8" aria-label="Profil singkat">
         <p className="kicker">WELCOME BACK, WARRIOR</p>
         <div className="mt-3 flex flex-wrap items-center gap-4">
-          <span
-            aria-hidden
-            className="grid size-14 shrink-0 place-items-center border border-border bg-secondary text-3xl"
-          >
-            {user.avatarEmoji}
-          </span>
+          {user.avatarUrl ? (
+            <img
+              src={user.avatarUrl}
+              alt="Avatar"
+              className="size-14 shrink-0 border border-border object-cover"
+            />
+          ) : (
+            <span
+              aria-hidden
+              className="grid size-14 shrink-0 place-items-center border border-border bg-secondary text-3xl"
+            >
+              {user.avatarEmoji}
+            </span>
+          )}
           <div className="min-w-0">
             <h1 className="truncate text-2xl font-bold tracking-tight sm:text-3xl">
               {user.name}
