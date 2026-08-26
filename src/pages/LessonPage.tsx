@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { ArrowLeft, ArrowRight, Check, CircleHelp, ShieldAlert, Timer } from "lucide-react";
 import {
-  LESSON_ORDER,
   exerciseDataset,
   getExercise,
   getLesson,
@@ -461,16 +460,6 @@ export default function LessonPage() {
   const completeLesson = useMutation(api.game.completeLesson);
   const doneLessons = new Set(data?.completedLessons ?? []);
 
-  const globalIdx = useMemo(
-    () => LESSON_ORDER.findIndex((l) => l.lessonId === lessonId),
-    [lessonId],
-  );
-  const prev = globalIdx > 0 ? LESSON_ORDER[globalIdx - 1] : null;
-  const next =
-    globalIdx >= 0 && globalIdx < LESSON_ORDER.length - 1
-      ? LESSON_ORDER[globalIdx + 1]
-      : null;
-
   if (!entry) {
     return (
       <div className="mx-auto max-w-xl py-16 text-center">
@@ -599,22 +588,7 @@ export default function LessonPage() {
                     "Latihan terkunci 🔒"
                   )}
                 </Button>
-              ) : (
-                /* Lesson tanpa latihan — otomatis selesai saat kuis lulus */
-                next && quizUnlocked && (
-                  <Link
-                    to={`/lesson/${next.lessonId}`}
-                    className="inline-flex h-11 items-center gap-2 rounded-md bg-primary px-6 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
-                    onClick={() => {
-                      setPhase("learn");
-                      setSolved(new Set());
-                      setLessonMarked(false);
-                    }}
-                  >
-                    Lanjut ke lesson berikutnya <ArrowRight className="size-4" />
-                  </Link>
-                )
-              )}
+              ) : null}
               {!quizUnlocked && lesson.exerciseIds.length > 0 && (
                 <p className="font-mono text-xs text-warning">
                   Lulusi CEK PEMAHAMAN dulu untuk membuka latihan.
@@ -625,20 +599,7 @@ export default function LessonPage() {
                   Lulusi CEK PEMAHAMAN dulu.
                 </p>
               )}
-              {/* Skip link hanya muncul jika lesson ini sudah selesai */}
-              {next && doneLessons.has(lesson.id) && (
-                <Link
-                  to={`/lesson/${next.lessonId}`}
-                  className="text-sm text-muted-foreground hover:text-foreground"
-                  onClick={() => {
-                    setPhase("learn");
-                    setSolved(new Set());
-                    setLessonMarked(false);
-                  }}
-                >
-                  skip ke lesson berikutnya →
-                </Link>
-              )}
+
 
             </div>
           </>
@@ -657,30 +618,19 @@ export default function LessonPage() {
                   />
                   {allSolved && (
                     <div className="rounded-md border border-success/40 bg-success/10 p-4">
-                      <p className="text-sm font-bold text-success">✓ WORLD MISSION COMPLETE</p>
+                      <p className="text-sm font-bold text-success">✓ LESSON COMPLETE</p>
                       <p className="mt-1 text-sm text-secondary-foreground">
                         Semua latihan di lesson ini beres.
                         {isLastLessonInWorld
                           ? " World ini tamat — mantap!"
-                          : " Lanjut ke lesson berikutnya!"}
+                          : " Selesaikan semua lesson di world ini untuk melanjutkan."}
                       </p>
-                      {!isLastLessonInWorld && next ? (
-                        <Link
-                          to={`/lesson/${next.lessonId}`}
-                          onClick={() => {
-                            setPhase("learn");
-                            setSolved(new Set());
-                            setLessonMarked(false);
-                          }}
-                          className="mt-3 inline-flex items-center gap-2 rounded-md bg-success px-4 py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
-                        >
-                          Lesson berikutnya <ArrowRight className="size-4" />
-                        </Link>
-                      ) : (
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          Konten world ini segera hadir — konten lengkap menyusul.
-                        </p>
-                      )}
+                      <Link
+                        to="/learn"
+                        className="mt-3 inline-flex items-center gap-2 rounded-md bg-success px-4 py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+                      >
+                        <ArrowLeft className="size-4" /> Kembali ke Peta Dunia
+                      </Link>
                     </div>
                   )}
                 </>
@@ -692,21 +642,6 @@ export default function LessonPage() {
           </div>
         )}
 
-        {/* navigasi bawah — mobile friendly */}
-        <nav className="mt-10 flex items-center justify-between border-t border-border pt-4 text-sm" aria-label="Navigasi lesson">
-          {prev ? (
-            <Link to={`/lesson/${prev.lessonId}`} className="group flex min-w-0 items-center gap-1.5 text-muted-foreground hover:text-foreground">
-              <ArrowLeft className="size-4 shrink-0 transition-transform group-hover:-translate-x-0.5" />
-              <span className="truncate">{LESSON_MAP_TITLE(prev.lessonId)}</span>
-            </Link>
-          ) : <span />}
-          {next ? (
-            <Link to={`/lesson/${next.lessonId}`} className="group flex min-w-0 items-center gap-1.5 text-right text-muted-foreground hover:text-foreground">
-              <span className="truncate">{LESSON_MAP_TITLE(next.lessonId)}</span>
-              <ArrowRight className="size-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
-            </Link>
-          ) : <span />}
-        </nav>
       </article>
 
       {/* ---------- PANEL KANAN / CONTEXT ---------- */}
@@ -756,8 +691,4 @@ export default function LessonPage() {
   );
 }
 
-/** judul pendek untuk nav bawah tanpa import ekstra */
-function LESSON_MAP_TITLE(id: string): string {
-  const e = getLesson(id);
-  return e ? e.lesson.title : id;
-}
+
