@@ -229,6 +229,16 @@ export const completeLesson = mutation({
       .first();
     if (existing) return { alreadyCompleted: true, xpAwarded: 0 };
 
+    // CEK PEMAHAMAN wajib lulus — divalidasi server, bukan cuma di UI
+    const quizPassed = await ctx.db
+      .query("quizSessions")
+      .withIndex("by_user_lesson", (q) => q.eq("userId", userId).eq("lessonId", lessonId))
+      .filter((q) => q.eq(q.field("status"), "passed"))
+      .first();
+    if (!quizPassed) {
+      throw new Error("Lulusi CEK PEMAHAMAN dulu untuk menamatkan lesson ini.");
+    }
+
     await ctx.db.insert("lessonProgress", {
       userId,
       lessonId,

@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { ArrowLeft, ArrowRight, Check, CircleHelp } from "lucide-react";
+import type { Id } from "@/convex/_generated/dataModel";
+import { ArrowLeft, ArrowRight, Check, CircleHelp, ShieldAlert, Timer } from "lucide-react";
 import {
   LESSON_ORDER,
   exerciseDataset,
@@ -90,65 +91,357 @@ function BlockRenderer({
         </aside>
       );
     case "quiz":
-      return <QuizBlock key={index} {...block} />;
+      // CEK PEMAHAMAN lama diganti sistem kuis acak server-side (QuizSection)
+      return null;
   }
 }
 
-function QuizBlock({
-  question,
-  options,
-  answer,
-  explain,
-}: {
+/* ---------------------- CEK PEMAHAMAN — kuis aman ----------------------- */
+
+interface QuizQ {
+  id: string;
   question: string;
   options: string[];
-  answer: number;
+}
+interface QuizResult {
+  question: string;
+  options: string[];
+  pick: number;
+  correctIndex: number;
+  correct: boolean;
   explain: string;
+}
+
+const QUIZ_RULES = [
+  "3-5 soal acak dari materi lesson ini — tiap siswa & tiap percobaan berbeda",
+  "Lulus dengan benar ≥ 75% untuk membuka latihan",
+  "Anti-cheat aktif: copy/paste, klik kanan & pindah tab tercatat — 3× = kuis direset dengan soal baru",
+];
+
+function QuizSection({
+  lessonId,
+  alreadyDone,
+  passed,
+}: {
+  lessonId: string;
+  alreadyDone: boolean;
+  passed: boolean;
 }) {
-  const [picked, setPicked] = useState<number | null>(null);
-  const correct = picked === answer;
+  const start = useMutation(api.quiz.startQuizSession);
+  const submit = useMutation(api.quiz.submitQuiz);
+  const report = useMutation(api.quiz.reportViolation);
+
+  const [session, setSession] = useState<{
+    id: Id<"quizSessions">;
+    questions: QuizQ[];
+    expiresAt: number;
+  } | null>(null);
+  const [picks, setPicks] = useState<number[]>([]);
+  const [result, setResult] = useState<{
+    passed: boolean;
+    score: number;
+    total: number;
+    results: QuizResult[];
+  } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
+  const [violations, setViolations] = useState(0);
+  const [left, setLeft] = useState(0);
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
+
+  // hitung mundur waktu kuis
+  useEffect(() => {
+    if (!session) return;
+    const tick = () => {
+      const rem = Math.max(0, Math.ceil((session.expiresAt - Date.now()) / 1000));
+      setLeft(rem);
+      if (rem === 0) {
+        setSession(null);
+        setError("Waktu kuis habis (20 menit). Mulai ulang untuk mendapat soal baru.");
+      }
+    };
+    tick();
+    const iv = setInterval(tick, 1000);
+    return () => clearInterval(iv);
+  }, [session]);
+
+  // anti-cheat: deteksi pindah tab / minimize
+  useEffect(() => {
+    if (!session) return;
+    const onHide = () => {
+      if (document.hidden) {
+        void violation("blur", "Kamu meninggalkan tab saat kuis! Pelanggaran tercatat.");
+      }
+    };
+    document.addEventListener("visibilitychange", onHide);
+    return () => document.removeEventListener("visibilitychange", onHide);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
+
+  const violation = async (kind: string, msg: string) => {
+    const s = sessionRef.current;
+    if (!s) return;
+    setWarning(msg);
+    try {
+      const r = await report({ sessionId: s.id, kind });
+      setViolations(r.violations);
+      if (r.voided) {
+        setSession(null);
+        setPicks([]);
+        setWarning(null);
+        setError(
+          "Sesi dibatalkan: 3× pelanggaran terdeteksi (copy/paste/klik kanan/pindah tab). Mulai ulang — soal diacak ulang.",
+        );
+      }
+    } catch {
+      /* sesi mungkin sudah selesai */
+    }
+  };
+
+  const handleStart = async () => {
+    setBusy(true);
+    setError(null);
+    setResult(null);
+    setWarning(null);
+    setViolations(0);
+    try {
+      const r = await start({ lessonId });
+      setSession({
+        id: r.sessionId,
+        questions: r.questions as QuizQ[],
+        expiresAt: r.expiresAt,
+      });
+      setPicks(new Array(r.questions.length).fill(-1));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Gagal memulai kuis.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    const s = sessionRef.current;
+    if (!s) return;
+    setBusy(true);
+    try {
+      const r = await submit({ sessionId: s.id, picks });
+      setResult(r);
+      setSession(null);
+      setWarning(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Gagal mengirim jawaban.");
+      setSession(null);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const antiCheatProps = {
+    onCopy: (e: React.ClipboardEvent) => {
+      e.preventDefault();
+      void violation("copy", "Copy terdeteksi & dicatat!");
+    },
+    onCut: (e: React.ClipboardEvent) => {
+      e.preventDefault();
+      void violation("cut", "Cut terdeteksi & dicatat!");
+    },
+    onPaste: (e: React.ClipboardEvent) => {
+      e.preventDefault();
+      void violation("paste", "Paste terdeteksi & dicatat!");
+    },
+    onContextMenu: (e: React.MouseEvent) => {
+      e.preventDefault();
+      void violation("contextmenu", "Klik kanan dimatikan saat kuis.");
+    },
+    onDragStart: (e: React.DragEvent) => e.preventDefault(),
+    onKeyDown: (e: React.KeyboardEvent) => {
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        ["c", "x", "p", "s", "u"].includes(e.key.toLowerCase())
+      ) {
+        e.preventDefault();
+        void violation("copy", "Shortcut copy/print diblokir saat kuis.");
+      }
+    },
+  };
+
+  // ---------- sudah lulus (riwayat) ----------
+  if (passed && !session && !result) {
+    return (
+      <fieldset className="rounded-md border border-success/40 bg-success/5 p-4">
+        <legend className="flex items-center gap-1.5 px-1 font-mono text-[11px] font-bold uppercase tracking-wider text-success">
+          <CircleHelp className="size-3.5" /> CEK PEMAHAMAN · LULUS ✓
+        </legend>
+        <p className="text-sm text-secondary-foreground">
+          Kamu sudah lulus kuis lesson ini{alreadyDone ? " dan lessonnya tamat" : ""}.
+          Latihan bebas kamu kerjakan kapan saja.
+        </p>
+        <Button variant="outline" size="sm" className="mt-3" onClick={handleStart} disabled={busy}>
+          Ulangi kuis (soal acak baru)
+        </Button>
+      </fieldset>
+    );
+  }
+
+  // ---------- hasil ----------
+  if (result) {
+    return (
+      <fieldset
+        className={cn(
+          "rounded-md border p-4",
+          result.passed ? "border-success/50 bg-success/5" : "border-warning/50 bg-warning/5",
+        )}
+      >
+        <legend
+          className={cn(
+            "flex items-center gap-1.5 px-1 font-mono text-[11px] font-bold uppercase tracking-wider",
+            result.passed ? "text-success" : "text-warning",
+          )}
+        >
+          <CircleHelp className="size-3.5" />{" "}
+          {result.passed ? "LULUS ✓" : "BELUM LULUS"} · SKOR {result.score}/{result.total}
+        </legend>
+        <p className="text-sm text-secondary-foreground">
+          {result.passed
+            ? "Mantap — latihan lesson ini terbuka. "
+            : `Butuh benar ≥ ${Math.ceil(result.total * 0.75)} dari ${result.total}. Bedah jawabanmu di bawah, lalu coba lagi dengan soal baru. `}
+        </p>
+        <ul className="mt-3 space-y-3">
+          {result.results.map((r, i) => (
+            <li key={i} className="rounded-md border border-border bg-background p-3">
+              <p className="text-sm font-semibold">
+                {i + 1}. {r.question}
+              </p>
+              <ul className="mt-1.5 space-y-1">
+                {r.options.map((opt, oi) => (
+                  <li
+                    key={oi}
+                    className={cn(
+                      "rounded border px-2 py-1 font-mono text-xs",
+                      oi === r.correctIndex
+                        ? "border-success/50 bg-success/10 text-success"
+                        : oi === r.pick
+                          ? "border-destructive/50 bg-destructive/10 text-destructive"
+                          : "border-border text-muted-foreground",
+                    )}
+                  >
+                    {String.fromCharCode(65 + oi)}. {opt}
+                    {oi === r.correctIndex && " ✓"}
+                    {oi === r.pick && oi !== r.correctIndex && " ✗ pilihanmu"}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-1.5 text-xs italic text-muted-foreground">{r.explain}</p>
+            </li>
+          ))}
+        </ul>
+        {!result.passed && (
+          <Button className="mt-3" onClick={handleStart} disabled={busy}>
+            Coba lagi — soal baru
+          </Button>
+        )}
+      </fieldset>
+    );
+  }
+
+  // ---------- kuis aktif ----------
+  if (session) {
+    const answered = picks.filter((p) => p >= 0).length;
+    const allPicked = answered === picks.length;
+    const mm = String(Math.floor(left / 60)).padStart(2, "0");
+    const ss = String(left % 60).padStart(2, "0");
+    return (
+      <fieldset
+        {...antiCheatProps}
+        className="relative select-none rounded-md border border-primary/50 p-4"
+      >
+        <legend className="flex items-center gap-1.5 px-1 font-mono text-[11px] font-bold uppercase tracking-wider text-primary">
+          <CircleHelp className="size-3.5" /> CEK PEMAHAMAN · {session.questions.length} SOAL
+        </legend>
+        {warning && (
+          <p className="mb-2 flex items-center gap-1.5 rounded border border-destructive/50 bg-destructive/10 px-2 py-1 font-mono text-[11px] font-bold text-destructive">
+            <ShieldAlert className="size-3.5 shrink-0" /> {warning}
+          </p>
+        )}
+        <p className="flex items-center gap-3 font-mono text-[10px] text-muted-foreground">
+          <span className={cn(violations > 0 && "font-bold text-destructive")}>
+            PELANGGARAN: {violations}/3
+          </span>
+          <span className="flex items-center gap-1">
+            <Timer className="size-3" aria-hidden /> SISA WAKTU:{" "}
+            <span className="font-bold tabular-nums text-foreground">
+              {mm}:{ss}
+            </span>
+          </span>
+        </p>
+        <ol className="mt-3 space-y-4">
+          {session.questions.map((qq, qi) => (
+            <li key={qq.id}>
+              <p className="text-sm font-semibold">
+                {qi + 1}. {qq.question}
+              </p>
+              <div className="mt-1.5 space-y-1">
+                {qq.options.map((opt, oi) => {
+                  const isPicked = picks[qi] === oi;
+                  return (
+                    <button
+                      key={oi}
+                      type="button"
+                      onClick={() => setPicks((p) => p.map((v, i) => (i === qi ? oi : v)))}
+                      aria-pressed={isPicked}
+                      className={cn(
+                        "block w-full rounded-md border px-3 py-1.5 text-left font-mono text-[13px] transition-colors",
+                        isPicked
+                          ? "border-primary bg-primary/10 font-semibold"
+                          : "border-border hover:border-foreground/30 hover:bg-secondary/60",
+                      )}
+                    >
+                      {String.fromCharCode(65 + oi)}. {opt}
+                    </button>
+                  );
+                })}
+              </div>
+            </li>
+          ))}
+        </ol>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <Button onClick={handleSubmit} disabled={busy || !allPicked}>
+            {allPicked ? "Kunci Jawaban" : `Jawab semua (${answered}/${picks.length})`}
+          </Button>
+          {!allPicked && (
+            <p className="font-mono text-[11px] text-muted-foreground">
+              jawab semua soal dulu — satu kali kunci, sesi selesai
+            </p>
+          )}
+        </div>
+      </fieldset>
+    );
+  }
+
+  // ---------- belum mulai ----------
   return (
-    <fieldset className="rounded-md border border-border p-4">
+    <fieldset className="rounded-md border border-primary/40 bg-accent/30 p-4">
       <legend className="flex items-center gap-1.5 px-1 font-mono text-[11px] font-bold uppercase tracking-wider text-primary">
         <CircleHelp className="size-3.5" /> CEK PEMAHAMAN
       </legend>
-      <p className="text-sm font-semibold">{question}</p>
-      <div className="mt-2.5 space-y-1.5">
-        {options.map((opt, i) => {
-          const isPicked = picked === i;
-          const showRight = picked != null && i === answer;
-          return (
-            <button
-              key={i}
-              onClick={() => setPicked(i)}
-              disabled={correct}
-              aria-pressed={isPicked}
-              className={cn(
-                "block w-full rounded-md border px-3 py-1.5 text-left font-mono text-[13px] transition-colors",
-                showRight
-                  ? "border-success bg-success/10"
-                  : isPicked && !correct
-                    ? "border-warning bg-warning/10"
-                    : "border-border hover:border-foreground/30 hover:bg-secondary/60",
-                correct && "opacity-70",
-              )}
-            >
-              {String.fromCharCode(65 + i)}. {opt}
-            </button>
-          );
-        })}
-      </div>
-      {picked != null && (
-        <p
-          className={cn(
-            "mt-2.5 text-sm",
-            correct ? "text-success" : "text-warning",
-          )}
-        >
-          {correct ? "✓ Tepat. " : "! Belum tepat. "}
-          <span className="font-normal text-secondary-foreground">{explain}</span>
+      <p className="text-sm font-semibold">
+        Buktikan kamu paham materi ini sebelum latihan dibuka.
+      </p>
+      <ul className="mt-2 space-y-1 font-mono text-[11px] leading-relaxed text-muted-foreground">
+        {QUIZ_RULES.map((r) => (
+          <li key={r}>▸ {r}</li>
+        ))}
+      </ul>
+      {error && (
+        <p className="mt-2 rounded border border-destructive/40 bg-destructive/10 px-2 py-1 text-xs text-destructive">
+          {error}
         </p>
       )}
+      <Button className="mt-3" onClick={handleStart} disabled={busy}>
+        {busy ? "Menyiapkan soal..." : passed ? "Ulangi kuis (soal acak baru)" : "Mulai Kuis"}
+      </Button>
     </fieldset>
   );
 }
@@ -159,6 +452,8 @@ export default function LessonPage() {
   const { lessonId } = useParams<{ lessonId: string }>();
   const entry = lessonId ? getLesson(lessonId) : undefined;
   const data = useQuery(api.game.dashboard);
+  // status kuis lesson ini — reaktif: begitu lulus, gate latihan terbuka
+  const quizPassed = useQuery(api.quiz.hasPassedQuiz, { lessonId: lessonId ?? "" });
   const [phase, setPhase] = useState<"learn" | "practice">("learn");
   const [solved, setSolved] = useState<Set<string>>(new Set());
   const [lessonMarked, setLessonMarked] = useState(false);
@@ -191,9 +486,11 @@ export default function LessonPage() {
   const totalXp = lesson.exerciseIds.reduce((sum, id) => sum + (getExercise(id)?.xp ?? 0), 0);
   const allSolved =
     lesson.exerciseIds.length > 0 && lesson.exerciseIds.every((id) => solved.has(id));
+  // latihan terkunci sampai kuis lulus (lesson yang sudah tamat langsung terbuka)
+  const quizUnlocked = quizPassed === true || doneLessons.has(lesson.id);
 
   const markComplete = async () => {
-    if (lessonMarked || doneLessons.has(lesson.id)) return;
+    if (lessonMarked || quizPassed !== true || doneLessons.has(lesson.id)) return;
     setLessonMarked(true);
     try {
       await completeLesson({ lessonId: lesson.id });
@@ -202,7 +499,13 @@ export default function LessonPage() {
     }
   };
 
-  if (allSolved && !lessonMarked && !doneLessons.has(lesson.id)) void markComplete();
+  if (
+    allSolved &&
+    quizPassed === true &&
+    !lessonMarked &&
+    !doneLessons.has(lesson.id)
+  )
+    void markComplete();
 
   return (
     <div className="mx-auto grid max-w-[1200px] gap-8 lg:grid-cols-[200px_minmax(0,1fr)_240px]">
@@ -266,19 +569,37 @@ export default function LessonPage() {
         {phase === "learn" ? (
           <>
             <div className="max-w-[720px] space-y-4">
-              {lesson.blocks.map((b, i) => (
-                <BlockRenderer key={i} block={b} index={i} />
-              ))}
+              {lesson.blocks
+                .filter((b) => b.type !== "quiz")
+                .map((b, i) => (
+                  <BlockRenderer key={i} block={b} index={i} />
+                ))}
+              <QuizSection
+                lessonId={lesson.id}
+                alreadyDone={doneLessons.has(lesson.id)}
+                passed={quizPassed === true}
+              />
             </div>
 
             <div className="mt-8 flex flex-wrap items-center gap-3 border-t border-border pt-6">
               <Button
                 size="lg"
                 onClick={() => setPhase("practice")}
-                disabled={lesson.exerciseIds.length === 0}
+                disabled={lesson.exerciseIds.length === 0 || !quizUnlocked}
               >
-                Lanjut ke latihan <ArrowRight className="size-4" />
+                {quizUnlocked ? (
+                  <>
+                    Lanjut ke latihan <ArrowRight className="size-4" />
+                  </>
+                ) : (
+                  "Latihan terkunci 🔒"
+                )}
               </Button>
+              {!quizUnlocked && lesson.exerciseIds.length > 0 && (
+                <p className="font-mono text-xs text-warning">
+                  Lulusi CEK PEMAHAMAN dulu untuk membuka latihan.
+                </p>
+              )}
               {next && (
                 <Link
                   to={`/lesson/${next.lessonId}`}

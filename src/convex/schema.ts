@@ -217,6 +217,26 @@ const schema = defineSchema(
       champion: v.optional(v.id("users")),
       createdAt: v.number(),
     }),
+
+    /* ------- Sesi kuis CEK PEMAHAMAN — soal acak, divalidasi server ------- */
+    quizSessions: defineTable({
+      userId: v.id("users"),
+      lessonId: v.string(),
+      questionIds: v.array(v.string()), // id soal dari quizBank (server-only)
+      optionOrders: v.array(v.array(v.number())), // permutasi opsi per soal
+      answers: v.array(v.number()), // index opsi TAMPILAN yang benar (tidak pernah ke client)
+      status: v.union(
+        v.literal("active"),
+        v.literal("passed"),
+        v.literal("failed"),
+        v.literal("void"),
+      ),
+      violations: v.number(),
+      createdAt: v.number(),
+      expiresAt: v.number(),
+    })
+      .index("by_user", ["userId"])
+      .index("by_user_lesson", ["userId", "lessonId"]),
   },
   {
     schemaValidation: false,
