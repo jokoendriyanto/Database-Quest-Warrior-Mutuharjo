@@ -173,11 +173,17 @@ export const resetPassword = action({
     }
     const email = target.email;
 
-    // sudah punya akun password? kalau belum, buat lalu tautkan ke user ini
-    const existing = await retrieveAccount(ctx, {
-      provider: "password",
-      account: { id: email },
-    });
+    // sudah punya akun password? kalau belum, buat lalu tautkan ke user ini.
+    // retrieveAccount THROW "InvalidAccountId" saat akun belum ada — jangan biarkan crash.
+    let existing: unknown = null;
+    try {
+      existing = await retrieveAccount(ctx, {
+        provider: "password",
+        account: { id: email },
+      });
+    } catch {
+      // belum punya akun password — dibuat di bawah
+    }
     if (existing) {
       await modifyAccountCredentials(ctx, {
         provider: "password",
