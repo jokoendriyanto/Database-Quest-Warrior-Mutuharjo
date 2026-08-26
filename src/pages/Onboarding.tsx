@@ -5,7 +5,7 @@ import { api } from "@/convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { AVATAR_OPTIONS } from "@/lib/game";
-import { Loader2, PartyPopper, ArrowRight, Flame, Trophy, Swords } from "lucide-react";
+import { Loader2, PartyPopper, ArrowRight, Flame, Trophy, Swords, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function Onboarding() {
@@ -41,118 +41,120 @@ export default function Onboarding() {
 
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden bg-background">
-      <div className="clay-blob -left-16 top-16 size-64 bg-primary/25" />
-      <div className="clay-blob -right-10 bottom-20 size-72 bg-accent/30" />
+      <div className="grid-motif absolute inset-0" aria-hidden />
 
-      {/* progress dots */}
-      <div className="relative z-10 mx-auto mt-8 flex gap-2">
-        {[0, 1, 2].map((i) => (
-          <span
-            key={i}
-            className={cn(
-              "h-2.5 rounded-full transition-all",
-              i === step ? "w-8 bg-primary" : i < step ? "w-2.5 bg-primary/60" : "w-2.5 bg-border",
-            )}
+      {/* step indicator — mono numbering, bukan dots dekoratif */}
+      <div className="relative z-10 mx-auto mt-10 w-full max-w-xl">
+        <p className="kicker">Setup · Step {step + 1} / 3</p>
+        <div className="inset-track mt-2">
+          <div
+            className="h-full rounded-full bg-primary transition-all duration-300"
+            style={{ width: `${((step + 1) / 3) * 100}%` }}
           />
-        ))}
+        </div>
       </div>
 
       <main className="relative z-10 mx-auto flex w-full max-w-xl flex-1 items-center px-4">
         {step === 0 && (
-          <div className="clay w-full p-8 text-center">
-            <p className="text-5xl" aria-hidden>👋</p>
-            <h1 className="mt-3 text-2xl font-black tracking-tight">
-              Selamat datang, {firstName}!
+          <section className="panel-raised w-full p-8 text-left">
+            <p className="kicker">Selamat datang</p>
+            <h1 className="mt-2 text-2xl font-extrabold tracking-tight">
+              Halo, {firstName}.
             </h1>
-            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-              Perjalananmu menjadi <strong>Database Grandmaster</strong> dimulai dari sini.
-              Tenang, kita nggak bakal mulai dari query 20 baris. 😭 Kita mulai dari nol —
+            <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
+              Perjalananmu jadi <strong className="text-foreground">Database Grandmaster</strong> mulai
+              dari sini. Tenang — kita nggak mulai dari query 20 baris. Kita mulai dari nol,
               pelan-pelan, sambil main.
             </p>
-            <Button
-              onClick={() => setStep(1)}
-              className="clay-btn mt-7 h-12 w-full rounded-2xl bg-primary text-base font-extrabold"
-            >
-              Siap! Lanjut <ArrowRight className="size-4" />
+
+            <pre className="caret-blink mt-5 rounded-lg border border-border bg-muted/60 p-4 font-mono text-[13px] leading-6 text-muted-foreground">
+{`-- level 0, xp 0, rank: NEWBIE
+SELECT * FROM journey WHERE student = '${firstName.toLowerCase()}';`}
+            </pre>
+
+            <Button onClick={() => setStep(1)} className="mt-7 h-11 w-full font-bold sm:w-auto sm:px-8">
+              Mulai Setup <ArrowRight className="size-4" />
             </Button>
-          </div>
+          </section>
         )}
 
         {step === 1 && (
-          <div className="clay w-full p-8">
-            <h1 className="text-center text-2xl font-black tracking-tight">Pilih Avatarmu 🎭</h1>
-            <p className="mt-1.5 text-center text-sm text-muted-foreground">
-              Ini wajahmu di leaderboard & battle arena. Pilih yang paling kamu banget.
+          <section className="panel-raised w-full p-8">
+            <p className="kicker">Identitas</p>
+            <h1 className="mt-2 text-2xl font-extrabold tracking-tight">Pilih avatarmu</h1>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              Ini wajahmu di leaderboard dan battle arena.
             </p>
-            <div className="mt-6 grid grid-cols-5 gap-2.5">
+            <div className="mt-6 grid grid-cols-5 gap-2">
               {AVATAR_OPTIONS.map((a) => (
                 <button
                   key={a}
                   onClick={() => setAvatar(a)}
                   aria-label={`Pilih avatar ${a}`}
+                  aria-pressed={avatar === a}
                   className={cn(
-                    "aspect-square rounded-2xl text-2xl transition-transform hover:-translate-y-0.5",
+                    "relative aspect-square rounded-lg border text-2xl transition-colors",
                     avatar === a
-                      ? "clay-btn scale-105 bg-primary"
-                      : "bg-secondary/70",
-                    avatar !== a && !avatar ? "" : "",
+                      ? "border-primary bg-accent"
+                      : "border-border bg-card hover:border-muted-foreground/40",
                   )}
                 >
                   {a}
+                  {avatar === a && (
+                    <span className="absolute -right-1 -top-1 grid size-4 place-items-center rounded-full bg-primary text-primary-foreground">
+                      <Check className="size-3" />
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
-            <Button
-              disabled={!avatar}
-              onClick={() => setStep(2)}
-              className="clay-btn mt-7 h-12 w-full rounded-2xl bg-primary text-base font-extrabold"
-            >
-              Kunci Avatar <ArrowRight className="size-4" />
-            </Button>
-          </div>
+            <div className="mt-7 flex gap-2">
+              <Button variant="ghost" onClick={() => setStep(0)} className="h-11">Kembali</Button>
+              <Button disabled={!avatar} onClick={() => setStep(2)} className="h-11 flex-1 font-bold sm:flex-none sm:px-8">
+                Lanjut <ArrowRight className="size-4" />
+              </Button>
+            </div>
+          </section>
         )}
 
         {step === 2 && (
-          <div className="clay w-full p-8">
-            <h1 className="text-center text-2xl font-black tracking-tight">
-              Cara Main dalam 30 Detik ⏱️
-            </h1>
-            <ul className="mt-5 space-y-3">
+          <section className="panel-raised w-full p-8">
+            <p className="kicker">Aturan main</p>
+            <h1 className="mt-2 text-2xl font-extrabold tracking-tight">Cara main dalam 30 detik</h1>
+            <ul className="mt-5 divide-y divide-border border-y border-border">
               {[
-                { icon: Trophy, title: "Kumpulkan XP", text: "Selesaikan lesson (+20), latihan SQL (+50), challenge boss (+150+)." },
-                { icon: Flame, title: "Jaga Streak", text: "Main minimal sehari sekali biar flame-mu tetap menyala." },
-                { icon: Swords, title: "Battle di Arena", text: "Kalahkan bot buat XP ekstra — menang pertama lawan tiap bot = +100!" },
+                { icon: Trophy, title: "Kumpulkan XP", text: "Selesaikan lesson (+20), latihan SQL (+50), challenge boss (+150+).", num: "01" },
+                { icon: Flame, title: "Jaga streak", text: "Main minimal sehari sekali biar flame-mu tetap menyala.", num: "02" },
+                { icon: Swords, title: "Battle di arena", text: "Kalahkan bot buat XP ekstra — kemenangan pertama lawan tiap bot = +100!", num: "03" },
               ].map((r) => (
-                <li key={r.title} className="clay-sm flex items-start gap-3 p-3.5">
-                  <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent text-accent-foreground">
-                    <r.icon className="size-5" />
-                  </span>
+                <li key={r.title} className="flex items-start gap-3 py-3.5 first:pt-0 last:pb-0">
+                  <span className="font-mono text-xs text-muted-foreground">{r.num}</span>
+                  <r.icon className="mt-0.5 size-4 shrink-0 text-primary" />
                   <div>
-                    <p className="text-sm font-extrabold">{r.title}</p>
+                    <p className="text-sm font-bold">{r.title}</p>
                     <p className="text-xs leading-relaxed text-muted-foreground">{r.text}</p>
                   </div>
                 </li>
               ))}
             </ul>
-            <Button
-              onClick={finish}
-              disabled={saving}
-              className="clay-btn mt-7 h-12 w-full rounded-2xl bg-primary text-base font-extrabold"
-            >
-              {saving ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <>
-                  <PartyPopper className="size-4" /> Mulai Perjalanan
-                </>
-              )}
-            </Button>
-          </div>
+            <div className="mt-7 flex gap-2">
+              <Button variant="ghost" onClick={() => setStep(1)} disabled={saving} className="h-11">Kembali</Button>
+              <Button onClick={finish} disabled={saving} className="h-11 flex-1 font-bold sm:flex-none sm:px-8">
+                {saving ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <>
+                    <PartyPopper className="size-4" /> Masuk ke Dashboard
+                  </>
+                )}
+              </Button>
+            </div>
+          </section>
         )}
       </main>
 
       <footer className="relative z-10 pb-6 text-center text-xs text-muted-foreground">
-        Made With ♥ By MrStepen ( Joko Endriyanto )
+        Made With Love By MrStepen ( Joko Endriyanto )
       </footer>
     </div>
   );

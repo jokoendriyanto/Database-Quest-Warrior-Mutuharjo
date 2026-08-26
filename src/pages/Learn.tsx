@@ -5,12 +5,10 @@ import { api } from "@/convex/_generated/api";
 import { WORLDS } from "@/lib/curriculum";
 import { cn } from "@/lib/utils";
 
-type WorldStatus = "mastered" | "completed" | "current" | "available" | "locked" | "soon";
+type WorldStatus = "completed" | "current" | "available" | "locked" | "soon";
 
 function statusMeta(s: WorldStatus): { label: string; cls: string } {
   switch (s) {
-    case "mastered":
-      return { label: "MASTERED", cls: "text-success" };
     case "completed":
       return { label: "COMPLETED", cls: "text-success" };
     case "current":
@@ -73,7 +71,7 @@ export default function Learn() {
                   "z-10 grid size-11 shrink-0 place-items-center border font-mono text-sm font-bold",
                   status === "current"
                     ? "border-primary bg-primary text-primary-foreground"
-                    : status === "completed" || status === "mastered"
+                    : status === "completed"
                       ? "border-success/50 bg-success/10 text-success"
                       : locked || soon
                         ? "border-border bg-muted text-muted-foreground/50"
@@ -82,7 +80,7 @@ export default function Learn() {
               >
                 {status === "current" ? (
                   <Play className="size-4 fill-current" aria-label="Current" />
-                ) : status === "completed" || status === "mastered" ? (
+                ) : status === "completed" ? (
                   <Check className="size-4" aria-hidden />
                 ) : locked ? (
                   <Lock className="size-4" aria-hidden />
