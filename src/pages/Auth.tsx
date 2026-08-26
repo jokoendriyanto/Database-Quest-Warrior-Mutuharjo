@@ -133,12 +133,21 @@ function AuthInner() {
         email: email.trim().toLowerCase(),
         password,
       });
-      await completeProfile({
-        username: usernameNorm,
-        name: name.trim(),
-        className: className || undefined,
-        role,
-      });
+      // Tunggu session auth aktif di server (max ~3s)
+      for (let i = 0; i < 15; i++) {
+        try {
+          await completeProfile({
+            username: usernameNorm,
+            name: name.trim(),
+            className: className || undefined,
+            role,
+          });
+          break;
+        } catch {
+          if (i === 14) throw new Error("Gagal menyimpan profil. Coba masuk ulang.");
+          await new Promise((r) => setTimeout(r, 200));
+        }
+      }
       navigate("/onboarding");
     } catch (err) {
       registeringRef.current = false;

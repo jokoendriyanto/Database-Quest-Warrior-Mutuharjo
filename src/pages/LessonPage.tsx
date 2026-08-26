@@ -499,13 +499,13 @@ export default function LessonPage() {
     }
   };
 
-  if (
-    allSolved &&
+  // Auto-complete: latihan semua selesai ATAU lesson tanpa latihan & kuis lulus
+  const shouldComplete =
     quizPassed === true &&
     !lessonMarked &&
-    !doneLessons.has(lesson.id)
-  )
-    void markComplete();
+    !doneLessons.has(lesson.id) &&
+    (allSolved || lesson.exerciseIds.length === 0);
+  if (shouldComplete) void markComplete();
 
   return (
     <div className="mx-auto grid max-w-[1200px] gap-8 lg:grid-cols-[200px_minmax(0,1fr)_240px]">
@@ -582,25 +582,48 @@ export default function LessonPage() {
             </div>
 
             <div className="mt-8 flex flex-wrap items-center gap-3 border-t border-border pt-6">
-              <Button
-                size="lg"
-                onClick={() => setPhase("practice")}
-                disabled={lesson.exerciseIds.length === 0 || !quizUnlocked}
-              >
-                {quizUnlocked ? (
-                  <>
-                    Lanjut ke latihan <ArrowRight className="size-4" />
-                  </>
-                ) : (
-                  "Latihan terkunci 🔒"
-                )}
-              </Button>
+              {lesson.exerciseIds.length > 0 ? (
+                <Button
+                  size="lg"
+                  onClick={() => setPhase("practice")}
+                  disabled={!quizUnlocked}
+                >
+                  {quizUnlocked ? (
+                    <>
+                      Lanjut ke latihan <ArrowRight className="size-4" />
+                    </>
+                  ) : (
+                    "Latihan terkunci 🔒"
+                  )}
+                </Button>
+              ) : (
+                /* Lesson tanpa latihan — otomatis selesai saat kuis lulus */
+                next && quizUnlocked && (
+                  <Link
+                    to={`/lesson/${next.lessonId}`}
+                    className="inline-flex h-11 items-center gap-2 rounded-md bg-primary px-6 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
+                    onClick={() => {
+                      setPhase("learn");
+                      setSolved(new Set());
+                      setLessonMarked(false);
+                    }}
+                  >
+                    Lanjut ke lesson berikutnya <ArrowRight className="size-4" />
+                  </Link>
+                )
+              )}
               {!quizUnlocked && lesson.exerciseIds.length > 0 && (
                 <p className="font-mono text-xs text-warning">
                   Lulusi CEK PEMAHAMAN dulu untuk membuka latihan.
                 </p>
               )}
-              {next && (
+              {lesson.exerciseIds.length === 0 && !quizUnlocked && (
+                <p className="font-mono text-xs text-warning">
+                  Lulusi CEK PEMAHAMAN dulu.
+                </p>
+              )}
+              {/* Skip link hanya muncul jika lesson ini sudah selesai */}
+              {next && doneLessons.has(lesson.id) && (
                 <Link
                   to={`/lesson/${next.lessonId}`}
                   className="text-sm text-muted-foreground hover:text-foreground"
@@ -615,7 +638,7 @@ export default function LessonPage() {
               )}
               {lesson.exerciseIds.length === 0 && (
                 <p className="text-sm text-muted-foreground">
-                  World ini segera hadir — konten lengkap menyusul.
+                  {quizUnlocked ? "" : "World ini segera hadir — konten lengkap menyusul."}
                 </p>
               )}
             </div>
