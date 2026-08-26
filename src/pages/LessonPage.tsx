@@ -577,6 +577,7 @@ export default function LessonPage() {
                   <BlockRenderer key={i} block={b} index={i} />
                 ))}
               <QuizSection
+                key={lesson.id}
                 lessonId={lesson.id}
                 alreadyDone={doneLessons.has(lesson.id)}
                 passed={quizPassed === true}
