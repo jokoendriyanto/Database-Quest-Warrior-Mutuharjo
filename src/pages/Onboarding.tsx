@@ -5,10 +5,9 @@ import { api } from "@/convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { AVATAR_OPTIONS } from "@/lib/game";
-import { Loader2, PartyPopper, ArrowRight, Flame, Trophy, Swords, Check, Camera } from "lucide-react";
+import { Loader2, PartyPopper, ArrowRight, Flame, Trophy, Swords, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AvatarUpload } from "@/components/AvatarUpload";
-import type { Id } from "@/convex/_generated/dataModel";
 
 export default function Onboarding() {
   const { user, isLoading } = useAuth();
@@ -98,8 +97,8 @@ SELECT * FROM journey WHERE student = '${firstName.toLowerCase()}';`}
               Ini wajahmu di leaderboard dan battle arena.
             </p>
 
-            {/* Upload foto custom */}
-            <div className="mt-5 flex flex-col items-center rounded-lg border border-dashed border-primary/40 bg-accent/30 p-5">
+            {/* Upload foto custom — compact */}
+            <div className="mt-6 flex items-center gap-4 rounded-lg border border-border bg-secondary/40 px-5 py-4">
               <AvatarUpload
                 avatarUrl={null}
                 emoji={avatar ?? "🦉"}
@@ -107,13 +106,19 @@ SELECT * FROM journey WHERE student = '${firstName.toLowerCase()}';`}
                   if (url) handleAvatarUploaded();
                   else setAvatarUploaded(false);
                 }}
-                size="lg"
+                size="md"
               />
-              {avatarUploaded && (
-                <p className="mt-2 rounded-md border border-success/40 bg-success/10 px-3 py-1 font-mono text-[11px] text-success">
-                  ✓ Foto terupload — akan tampil di profil & leaderboard
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold">Upload Foto</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  JPG, PNG, WebP, atau GIF — maks 2MB
                 </p>
-              )}
+                {avatarUploaded && (
+                  <p className="mt-1.5 font-mono text-[10px] font-semibold text-success">
+                    ✓ Foto terupload
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* Divider */}
