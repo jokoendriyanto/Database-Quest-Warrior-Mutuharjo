@@ -277,7 +277,7 @@ export const dashboard = query({
       .query("exerciseAttempts")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .order("desc")
-      .take(6);
+      .take(24);
 
     // posisi leaderboard berdasarkan XP
     const allStats = await ctx.db
@@ -324,6 +324,22 @@ export const dashboard = query({
       if (a.isCorrect) rec.correct++;
       skillMap.set(ex.worldNum, rec);
     }
+    // aktivitas 7 hari terakhir (UTC) — dari data nyata attempt/battle/lesson
+    const dayKey = (t: number) => new Date(t).toISOString().slice(0, 10);
+    const today = dayKey(Date.now());
+    const activity7d = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date();
+      d.setUTCHours(0, 0, 0, 0);
+      d.setUTCDate(d.getUTCDate() - (6 - i));
+      const key = d.toISOString().slice(0, 10);
+      return {
+        date: key,
+        exercises: myAttempts.filter((a) => dayKey(a.at) === key).length,
+        battlesWon: myBattles.filter((b) => b.won && dayKey(b.at) === key).length,
+        lessons: progressRows.filter((r) => dayKey(r.completedAt) === key).length,
+      };
+    });
+
     const skillStats = [...skillMap.values()]
       .map((s) => ({
         ...s,
@@ -366,6 +382,8 @@ export const dashboard = query({
       lessonsToday,
       battlesWonToday,
       skillStats,
+      activity7d,
+      today,
       recentAttempts: recentAttempts.map((a) => ({
         exerciseId: a.exerciseId,
         isCorrect: a.isCorrect,

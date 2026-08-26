@@ -1,7 +1,23 @@
+import { Link } from "react-router";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import {
+  Map as MapIcon,
+  Swords,
+  Trophy,
+  Lock,
+  Target,
+} from "lucide-react";
 import { BADGES, WORLD_SKILL, RANKS, levelProgress, tierFromWins } from "@/lib/game";
 import { cn } from "@/lib/utils";
+
+const DAY_LABELS = ["MIN", "SEN", "SEL", "RAB", "KAM", "JUM", "SAB"];
+
+function dayLabel(date: string) {
+  // date = "YYYY-MM-DD" (UTC) — parse sebagai UTC agar nama hari konsisten
+  const d = new Date(`${date}T00:00:00Z`);
+  return DAY_LABELS[d.getUTCDay()];
+}
 
 export default function ProfilePage() {
   const data = useQuery(api.game.dashboard);
@@ -9,89 +25,245 @@ export default function ProfilePage() {
 
   if (!data) {
     return (
-      <div className="mx-auto max-w-3xl space-y-4" aria-busy>
-        <div className="h-24 animate-pulse rounded bg-muted" />
-        <div className="h-40 animate-pulse rounded bg-muted" />
+      <div className="mx-auto max-w-4xl space-y-4" aria-busy>
+        <div className="panel h-40 animate-pulse" />
+        <div className="panel h-24 animate-pulse" />
       </div>
     );
   }
 
-  const { user, stats, level, rank } = data;
+  const { user, stats, level, rank, activity7d, today } = data;
   const lp = levelProgress(stats.xp);
   const nextRank = RANKS.find((r) => r.minLevel > level);
   const tier = tierFromWins(stats.botWins);
   const accuracy =
     stats.exercisesDone > 0
       ? Math.round((stats.exercisesCorrect / stats.exercisesDone) * 100)
-      : null;
+      : 0;
 
   const earned = new Set(stats.badges);
+  const duelTotal = stats.duelWins + stats.duelLosses + stats.duelDraws;
+  const duelWinRate = duelTotal > 0 ? Math.round((stats.duelWins / duelTotal) * 100) : 0;
+
+  // ringkasan minggu ini dari aktivitas 7 hari (data nyata)
+  const weekExercises = activity7d.reduce((n, d) => n + d.exercises, 0);
+  const weekBattles = activity7d.reduce((n, d) => n + d.battlesWon, 0);
+  const weekLessons = activity7d.reduce((n, d) => n + d.lessons, 0);
+  const bestDay = activity7d.reduce(
+    (best, d) =>
+      d.exercises + d.battlesWon + d.lessons > best.exercises + best.battlesWon + best.lessons
+        ? d
+        : best,
+    activity7d[0],
+  );
+
+  // tren 24 attempt terakhir
+  const trend = data.recentAttempts;
+  const trendCorrect = trend.filter((a) => a.isCorrect).length;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-10">
-      {/* ---------- IDENTITY ---------- */}
-      <header>
-        <div className="flex items-start gap-4">
+    <div className="mx-auto max-w-4xl space-y-8">
+      {/* ================= HERO ================= */}
+      <section className="panel p-5 sm:p-6" aria-labelledby="profile-name">
+        <div className="flex items-start gap-4 sm:gap-5">
           <span
             aria-hidden
-            className="grid size-14 shrink-0 place-items-center border border-border bg-card text-2xl"
+            className="grid size-16 shrink-0 place-items-center border-2 border-primary/60 bg-card text-3xl sm:size-20 sm:text-4xl"
           >
             {user.avatarEmoji}
           </span>
-          <div className="min-w-0">
-            <h1 className="truncate text-2xl font-bold tracking-tight">{user.name}</h1>
-            <p className="font-mono text-xs text-muted-foreground">
-              @{user.username || "—"}
-              {user.className ? ` · ${user.className}` : ""}
+          <div className="min-w-0 flex-1">
+            <p className="kicker">@{user.username || "petualang"}</p>
+            <h1 id="profile-name" className="truncate text-2xl font-bold tracking-tight sm:text-3xl">
+              {user.name}
+            </h1>
+            <p className="mt-0.5 truncate text-sm text-muted-foreground">
+              {user.className ? `${user.className} · ` : ""}PPLG Mutuharjo
             </p>
-            <p className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-[11px]">
-              <span className="font-semibold">
-                {rank.emoji} {rank.name}
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
+              <span className="rounded border border-warning/40 bg-warning/10 px-2 py-0.5 font-mono text-[10px] font-bold tracking-wider text-warning">
+                {rank.emoji} {rank.name.toUpperCase()}
               </span>
-              <span className="text-muted-foreground">LV {level}</span>
-              <span style={{ color: tier.color }}>BATTLE: {tier.name.toUpperCase()}</span>
-            </p>
+              <span className="rounded border border-primary/40 bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold tracking-wider text-primary">
+                LEVEL {level}
+              </span>
+              <span
+                className="rounded border px-2 py-0.5 font-mono text-[10px] font-bold tracking-wider"
+                style={{ borderColor: `${tier.color}55`, color: tier.color }}
+              >
+                {tier.name.toUpperCase()}
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* ringkasan inline — bukan KPI cards */}          <dl className="mt-5 flex flex-wrap gap-x-8 gap-y-2 border-y border-border py-3 font-mono text-xs">
+        <p className="mt-4 font-mono text-[11px] tracking-wide text-muted-foreground">
+          RANK BERIKUTNYA:{" "}
+          {nextRank ? (
+            <span className="font-semibold text-foreground">
+              {nextRank.emoji} {nextRank.name.toUpperCase()} @ LV {nextRank.minLevel}
+            </span>
+          ) : (
+            <span className="font-semibold text-foreground">RANK MAKSIMAL TERCAPAI</span>
+          )}
+        </p>
+        <div className="inset-track mt-1.5">
+          <div
+            className="h-full bg-primary transition-all"
+            style={{ width: `${Math.round((lp.current / lp.needed) * 100)}%` }}
+          />
+        </div>
+        <p className="mt-1 font-mono text-[10px] text-muted-foreground">
+          {lp.current.toLocaleString()} / {lp.needed.toLocaleString()} XP → LV {level + 1}
+          {nextRank ? ` · ${nextRank.name} terbuka di LV ${nextRank.minLevel}` : ""}
+        </p>
+      </section>
+
+      {/* ================= STATISTIK ================= */}
+      <section aria-labelledby="stats-h">
+        <h2 id="stats-h" className="kicker mb-3">STATISTIK</h2>
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
           {[
-            ["TOTAL XP", stats.xp.toLocaleString()],
-            ["QUERIES", stats.queriesRun.toLocaleString()],
-            ["LESSON TAMAT", String(stats.lessonsCompleted)],
-            ["ACCURACY", accuracy != null ? `${accuracy}%` : "—"],
-            ["STREAK", `${stats.streak} hari (best ${stats.longestStreak})`],
-            ["BATTLE", `${stats.botWins}W / ${stats.botLosses}L`],
-            ["DUEL RATING", `${stats.duelRating} (${stats.duelWins}W/${stats.duelLosses}L${stats.duelDraws ? `/${stats.duelDraws}D` : ""})`],
-          ].map(([k, v]) => (
-            <div key={k}>
-              <dt className="text-[10px] uppercase tracking-wider text-muted-foreground">{k}</dt>
-              <dd className="mt-0.5 text-sm font-bold tabular-nums">{v}</dd>
+            { v: String(level), l: "LEVEL", c: "text-primary" },
+            { v: stats.xp.toLocaleString(), l: "TOTAL XP", c: "text-info" },
+            { v: `${accuracy}%`, l: "AKURASI", c: "text-success" },
+            { v: String(stats.exercisesDone), l: "LATIHAN", c: "text-foreground" },
+            { v: `${stats.streak}d`, l: "STREAK", c: "text-warning" },
+            { v: `${duelWinRate}%`, l: "WIN RATE DUEL", c: "text-battle" },
+          ].map(({ v, l, c }) => (
+            <div key={l} className="panel px-3 py-3 text-center">
+              <p className={cn("font-mono text-2xl font-bold tabular-nums", c)}>{v}</p>
+              <p className="mt-1 font-mono text-[9px] tracking-wider text-muted-foreground">{l}</p>
             </div>
           ))}
-        </dl>
-        <p className="mt-2 font-mono text-[11px] text-muted-foreground">
-          {lp.current.toLocaleString()} / {lp.needed.toLocaleString()} XP menuju LV{" "}
-          {level + 1}
-          {nextRank ? ` · ${nextRank.name} di LV ${nextRank.minLevel}` : " · rank maksimal"}
-        </p>
-        <div className="inset-track mt-1.5 max-w-md">
-          <div className="h-full bg-primary" style={{ width: `${Math.round((lp.current / lp.needed) * 100)}%` }} />
         </div>
-      </header>
+      </section>
 
-      {/* ---------- SKILLS ---------- */}
-      <section aria-labelledby="skills-h">
-        <h2 id="skills-h" className="kicker mb-3">SKILLS</h2>
-        {data.skillStats.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Belum ada data. Skill-mu terpetakan otomatis dari latihan yang kamu kerjakan.
+      {/* ================= RINGKASAN 7 HARI ================= */}
+      <section aria-labelledby="week-h">
+        <h2 id="week-h" className="kicker mb-3">RINGKASAN 7 HARI TERAKHIR</h2>
+        <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+          {[
+            {
+              l: "LATIHAN",
+              v: weekExercises,
+              sub: `HARI INI: ${stats.todayExercises}`,
+            },
+            {
+              l: "BATTLE DIMENANGKAN",
+              v: weekBattles,
+              sub: `HARI INI: ${data.battlesWonToday}`,
+            },
+            {
+              l: "LESSON TAMAT",
+              v: weekLessons,
+              sub: `TOTAL: ${stats.lessonsCompleted}`,
+            },
+            {
+              l: "HARI TERAKTIF",
+              v: dayLabel(bestDay?.date ?? today),
+              sub: bestDay ? `${bestDay.exercises + bestDay.battlesWon + bestDay.lessons} AKSI` : "—",
+            },
+          ].map(({ l, v, sub }) => (
+            <div key={l} className="panel px-4 py-3.5">
+              <p className="font-mono text-[10px] tracking-wider text-muted-foreground">{l}</p>
+              <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-primary">{v}</p>
+              <p className="mt-1 font-mono text-[10px] text-muted-foreground">{sub}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ================= AKTIVITAS 7 HARI ================= */}
+      <section className="panel p-4 sm:p-5" aria-labelledby="act-h">
+        <div className="flex items-baseline justify-between gap-2">
+          <h2 id="act-h" className="kicker">AKTIVITAS 7 HARI TERAKHIR</h2>
+          <p className="font-mono text-[10px] text-muted-foreground">
+            STREAK: {stats.streak} HARI · BEST: {stats.longestStreak}
           </p>
+        </div>
+        <ul className="mt-3 grid grid-cols-7 gap-1.5 sm:gap-2">
+          {activity7d.map((d) => {
+            const total = d.exercises + d.battlesWon + d.lessons;
+            const isToday = d.date === today;
+            return (
+              <li
+                key={d.date}
+                className={cn(
+                  "flex flex-col items-center gap-1 border px-1 py-2.5 text-center",
+                  isToday ? "border-primary/60 bg-primary/5" : "border-border bg-secondary/40",
+                )}
+              >
+                <span
+                  className={cn(
+                    "font-mono text-[9px] tracking-wider",
+                    isToday ? "font-bold text-primary" : "text-muted-foreground",
+                  )}
+                >
+                  {dayLabel(d.date)}
+                </span>
+                {total > 0 ? (
+                  <>
+                    <span className="text-base leading-none" aria-hidden>🔥</span>
+                    <span className="font-mono text-[10px] font-bold tabular-nums">
+                      {total} aksi
+                    </span>
+                  </>
+                ) : (
+                  <span className="font-mono text-sm leading-none text-muted-foreground/50">–</span>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+
+      {/* ================= TREN LATIHAN ================= */}
+      <section aria-labelledby="trend-h">
+        <h2 id="trend-h" className="kicker mb-3">TREN LATIHAN · 24 PERCOBAAN TERAKHIR</h2>
+        <div className="panel px-4 py-5">
+          {trend.length === 0 ? (
+            <p className="text-center font-mono text-xs text-muted-foreground">
+              belum ada latihan — mulai dari jalur misi di Learn
+            </p>
+          ) : (
+            <>
+              <ul className="flex flex-wrap items-center justify-center gap-1.5" aria-label="Hasil 24 percobaan terakhir">
+                {trend.map((a, i) => (
+                  <li
+                    key={i}
+                    title={a.isCorrect ? "Benar" : "Belum benar"}
+                    className={cn(
+                      "size-4 border sm:size-5",
+                      a.isCorrect
+                        ? "border-success/50 bg-success/70"
+                        : "border-warning/50 bg-warning/50",
+                    )}
+                  />
+                ))}
+              </ul>
+              <p className="mt-4 text-center font-mono text-[10px] tracking-wider text-muted-foreground">
+                <span className="text-success">HIJAU</span> = BENAR ·{" "}
+                <span className="text-warning">KUNING</span> = SALAH ·{" "}
+                {trendCorrect}/{trend.length} BENAR
+              </p>
+            </>
+          )}
+        </div>
+      </section>
+
+      {/* ================= SKILL PER DUNIA ================= */}
+      <section aria-labelledby="skills-h">
+        <h2 id="skills-h" className="kicker mb-3">SKILL PER DUNIA</h2>
+        {data.skillStats.length === 0 ? (
+          <div className="panel px-4 py-5 text-center font-mono text-xs text-muted-foreground">
+            belum ada data — skill terpetakan otomatis dari latihan yang kamu kerjakan
+          </div>
         ) : (
-          <ul className="space-y-2.5 max-w-md">
+          <ul className="panel space-y-3 px-4 py-4">
             {data.skillStats.map((s) => (
               <li key={s.worldNum} className="flex items-center gap-3">
-                <span className="w-20 shrink-0 font-mono text-xs font-semibold">
+                <span className="w-24 shrink-0 truncate font-mono text-[11px] font-semibold">
                   {WORLD_SKILL[s.worldNum] ?? `W${s.worldNum}`}
                 </span>
                 <div className="inset-track flex-1">
@@ -103,7 +275,7 @@ export default function ProfilePage() {
                     style={{ width: `${Math.max(4, s.accuracy)}%` }}
                   />
                 </div>
-                <span className="w-12 shrink-0 text-right font-mono text-xs font-bold">
+                <span className="w-14 shrink-0 text-right font-mono text-xs font-bold tabular-nums">
                   {s.accuracy}%
                 </span>
               </li>
@@ -112,40 +284,89 @@ export default function ProfilePage() {
         )}
       </section>
 
-      {/* ---------- DUEL HISTORY ---------- */}
+      {/* ================= BADGES ================= */}
+      <section aria-labelledby="badges-h">
+        <h2 id="badges-h" className="kicker mb-3">
+          WARRIOR BADGES · {earned.size}/{BADGES.length}
+        </h2>
+        <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+          {BADGES.map((b) => {
+            const has = earned.has(b.id);
+            return (
+              <li
+                key={b.id}
+                className={cn(
+                  "px-4 py-3.5",
+                  has ? "panel" : "border border-dashed border-border opacity-60",
+                )}
+              >
+                <p className="text-xl leading-none" aria-hidden>
+                  {has ? b.icon : <Lock className="size-4 text-muted-foreground" aria-label="Terkunci" />}
+                </p>
+                <p
+                  className={cn(
+                    "mt-2 text-[13px] font-bold uppercase tracking-wide",
+                    !has && "text-muted-foreground",
+                  )}
+                >
+                  {b.label}
+                </p>
+                <p className="mt-0.5 font-mono text-[10px] leading-snug text-muted-foreground">
+                  {b.desc}
+                </p>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+
+      {/* ================= BATTLE HISTORY ================= */}
       <section aria-labelledby="duels-h">
-        <h2 id="duels-h" className="kicker mb-3">RIWAYAT DUEL 1V1</h2>
+        <h2 id="duels-h" className="kicker mb-3">
+          BATTLE HISTORY · DUEL 1V1 ({duelTotal})
+        </h2>
         {!duels ? (
-          <div className="h-20 animate-pulse rounded bg-muted" />
+          <div className="panel h-16 animate-pulse" />
         ) : duels.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Belum pernah duel. Buka Battle Arena, bagikan kode 4 huruf, dan aduin skill dengan teman.
-          </p>
+          <div className="panel px-4 py-6 text-center">
+            <p className="text-sm text-muted-foreground">
+              Belum pernah duel. Bagikan kode 4 huruf di Battle Arena dan aduin skill dengan teman.
+            </p>
+          </div>
         ) : (
-          <ul className="divide-y divide-border rounded-lg border border-border">
+          <ul className="panel divide-y divide-border">
             {duels.map((d, i) => (
-              <li key={i} className="flex items-center gap-3 px-4 py-2.5">
+              <li key={i} className="flex items-center gap-3 px-4 py-3">
                 <span
                   className={cn(
-                    "shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] font-bold tracking-wider",
+                    "w-16 shrink-0 rounded border px-1.5 py-0.5 text-center font-mono text-[10px] font-bold tracking-wider",
                     d.draw
-                      ? "bg-secondary text-muted-foreground"
+                      ? "border-border bg-secondary text-muted-foreground"
                       : d.won
-                        ? "bg-success/15 text-success"
-                        : "bg-destructive/10 text-destructive",
+                        ? "border-success/40 bg-success/10 text-success"
+                        : "border-destructive/40 bg-destructive/10 text-destructive",
                   )}
                 >
                   {d.draw ? "DRAW" : d.won ? "WIN" : "LOSE"}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm">
-                    vs <span className="font-semibold">{d.opponentEmoji} {d.opponent}</span>
+                  <span className="block truncate text-sm font-semibold">
+                    vs {d.opponentEmoji} {d.opponent}
                   </span>
                   <span className="block truncate font-mono text-[10px] text-muted-foreground">
-                    {d.exerciseTitle}
-                    {d.mySeconds != null ? ` · ${d.mySeconds}s` : ""}
-                    {` · ${new Date(d.at).toLocaleDateString("id-ID")}`}
+                    {d.exerciseTitle} ·{" "}
+                    {new Date(d.at).toLocaleDateString("id-ID", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
                   </span>
+                </span>
+                <span className="shrink-0 text-right">
+                  <span className="block font-mono text-sm font-bold tabular-nums">
+                    {d.mySeconds != null ? `${d.mySeconds}s` : "—"}
+                  </span>
+                  <span className="block font-mono text-[9px] text-muted-foreground">WAKTUMU</span>
                 </span>
               </li>
             ))}
@@ -153,40 +374,36 @@ export default function ProfilePage() {
         )}
       </section>
 
-      {/* ---------- ACHIEVEMENTS ---------- */}
-      <section aria-labelledby="badges-h">
-        <h2 id="badges-h" className="kicker mb-3">
-          ACHIEVEMENTS · {earned.size}/{BADGES.length}
-        </h2>
-        <ul className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-4">
-          {BADGES.map((b) => {
-            const has = earned.has(b.id);
-            return (
-              <li key={b.id} className={cn(!has && "opacity-45")}>
-                <p className="text-xl leading-none" aria-hidden>{b.icon}</p>
-                <p className={cn("mt-1.5 text-[13px] font-semibold", !has && "text-muted-foreground")}>
-                  {has ? b.label : "???"}
-                </p>
-                <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{b.desc}</p>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
+      {/* ================= CTA BAWAH ================= */}
+      <nav
+        aria-label="Aksi cepat"
+        className="grid grid-cols-1 gap-2.5 pb-4 sm:grid-cols-3"
+      >
+        <Link
+          to="/learn"
+          className="flex items-center justify-center gap-2 border border-primary bg-primary px-4 py-3 font-mono text-xs font-bold tracking-wider text-primary-foreground transition-colors hover:bg-primary/90"
+        >
+          <MapIcon className="size-4" aria-hidden /> LANJUT MISI
+        </Link>
+        <Link
+          to="/battle"
+          className="flex items-center justify-center gap-2 border border-battle bg-battle px-4 py-3 font-mono text-xs font-bold tracking-wider text-white transition-colors hover:brightness-110"
+        >
+          <Swords className="size-4" aria-hidden /> MASUK ARENA
+        </Link>
+        <Link
+          to="/leaderboard"
+          className="flex items-center justify-center gap-2 border border-border bg-card px-4 py-3 font-mono text-xs font-bold tracking-wider text-foreground transition-colors hover:bg-secondary"
+        >
+          <Trophy className="size-4" aria-hidden /> LEADERBOARD
+        </Link>
+      </nav>
 
-      {/* ---------- PORTFOLIO ---------- */}
-      <section aria-labelledby="portfolio-h">
-        <h2 id="portfolio-h" className="kicker mb-3">PORTFOLIO</h2>
-        <div className="rounded-lg border border-dashed border-border px-4 py-8 text-center">
-          <p className="text-sm text-muted-foreground">
-            Belum ada project yang disimpan di sini.
-          </p>
-          <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground/80">
-            Nanti, database yang kamu rancang di world Database Architect bisa dipajang
-            di bagian ini — lengkap dengan skema dan query andalanmu.
-          </p>
-        </div>
-      </section>
+      {/* catatan kecil: target berikutnya */}
+      <p className="flex items-center justify-center gap-1.5 pb-2 text-center font-mono text-[10px] text-muted-foreground">
+        <Target className="size-3" aria-hidden />
+        Global rank #{data.leaderboardPosition} · {stats.queriesRun.toLocaleString()} query dijalankan
+      </p>
     </div>
   );
 }

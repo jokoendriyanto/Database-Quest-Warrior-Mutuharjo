@@ -448,7 +448,7 @@ export default function Dashboard() {
             </p>
           ) : (
             <ul className="panel divide-y divide-border">
-              {data.recentAttempts.map((a, i) => {
+              {data.recentAttempts.slice(0, 6).map((a, i) => {
                 const ex = getExercise(a.exerciseId);
                 return (
                   <li key={i} className="flex items-center gap-3 px-4 py-2.5 text-sm">
