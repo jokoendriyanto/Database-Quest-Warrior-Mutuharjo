@@ -1,1 +1,0 @@
-import{c as e,C as o,g as n}from"./index-BGv90hHf.js";const t=[["path",{d:"m6 9 6 6 6-6",key:"qrunsl"}]],c=e("chevron-down",t),a=Object.freeze(Object.defineProperty({__proto__:null,BaseConvexClient:n,ConvexHttpClient:o},Symbol.toStringTag,{value:"Module"}));export{c as C,a as i};
