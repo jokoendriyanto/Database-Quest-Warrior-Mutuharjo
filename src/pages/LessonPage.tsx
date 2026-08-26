@@ -488,6 +488,8 @@ export default function LessonPage() {
     lesson.exerciseIds.length > 0 && lesson.exerciseIds.every((id) => solved.has(id));
   // latihan terkunci sampai kuis lulus (lesson yang sudah tamat langsung terbuka)
   const quizUnlocked = quizPassed === true || doneLessons.has(lesson.id);
+  // apakah ini lesson terakhir di world ini?
+  const isLastLessonInWorld = world.lessons[world.lessons.length - 1]?.id === lesson.id;
 
   const markComplete = async () => {
     if (lessonMarked || quizPassed !== true || doneLessons.has(lesson.id)) return;
@@ -636,11 +638,7 @@ export default function LessonPage() {
                   skip ke lesson berikutnya →
                 </Link>
               )}
-              {lesson.exerciseIds.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  {quizUnlocked ? "" : "World ini segera hadir — konten lengkap menyusul."}
-                </p>
-              )}
+
             </div>
           </>
         ) : (
@@ -661,9 +659,11 @@ export default function LessonPage() {
                       <p className="text-sm font-bold text-success">✓ WORLD MISSION COMPLETE</p>
                       <p className="mt-1 text-sm text-secondary-foreground">
                         Semua latihan di lesson ini beres.
-                        {next ? " Lanjut ke lesson berikutnya!" : " World ini tamat — mantap!"}
+                        {isLastLessonInWorld
+                          ? " World ini tamat — mantap!"
+                          : " Lanjut ke lesson berikutnya!"}
                       </p>
-                      {next && (
+                      {!isLastLessonInWorld && next ? (
                         <Link
                           to={`/lesson/${next.lessonId}`}
                           onClick={() => {
@@ -675,6 +675,10 @@ export default function LessonPage() {
                         >
                           Lesson berikutnya <ArrowRight className="size-4" />
                         </Link>
+                      ) : (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          Konten world ini segera hadir — konten lengkap menyusul.
+                        </p>
                       )}
                     </div>
                   )}
