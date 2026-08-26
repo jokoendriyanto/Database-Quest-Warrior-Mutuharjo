@@ -159,9 +159,14 @@ function tokenize(sql: string): Token[] {
       continue;
     }
     const two = s.slice(i, i + 2);
-    if (["<=", ">=", "!=", "<>", "="].includes(two)) {
+    if (["<=", ">=", "!=", "<>"].includes(two)) {
       tokens.push({ type: "op", value: two === "<>" ? "!=" : two });
       i += 2;
+      continue;
+    }
+    if (ch === "=") {
+      tokens.push({ type: "op", value: "=" });
+      i++;
       continue;
     }
     if ("<>()*,;".includes(ch)) {
@@ -253,12 +258,25 @@ class Parser {
       this.expectKw("join");
       const table = this.parseTableRef();
       this.expectKw("on");
-      const l = this.parseExpr() as { kind: "col"; name: string };
-      this.expectOp("=");
-      const r = this.parseExpr() as { kind: "col"; name: string };
-      if (l.kind !== "col" || r.kind !== "col")
-        throw new SqlError("ER_PARSE", " kondisi ON harus berupa perbandingan dua kolom, contoh: ON students.class_id = classes.id");
-      join = { table, type, onLeft: l.name, onRight: r.name };
+      const cond = this.parseExpr() as {
+        kind: string;
+        op?: string;
+        l?: Expr;
+        r?: Expr;
+      };
+      if (
+        cond.kind !== "cmp" ||
+        cond.op !== "=" ||
+        cond.l?.kind !== "col" ||
+        cond.r?.kind !== "col"
+      )
+        throw new SqlError("ER_PARSE", "Kondisi ON harus berupa perbandingan dua kolom, contoh: ON students.class_id = classes.id");
+      join = {
+        table,
+        type,
+        onLeft: (cond.l as { kind: "col"; name: string }).name,
+        onRight: (cond.r as { kind: "col"; name: string }).name,
+      };
     }
 
     let where: Expr | undefined;

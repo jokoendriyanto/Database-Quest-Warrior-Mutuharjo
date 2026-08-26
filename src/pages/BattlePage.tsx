@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Play, Swords } from "lucide-react";
+import { Play } from "lucide-react";
 import {
   battlePool,
   exerciseDataset,
@@ -13,6 +13,8 @@ import type { Database as SqlDatabase, RunResult } from "@/lib/sql/engine";
 import { runSql, SqlError } from "@/lib/sql/engine";
 import { BOTS, botByKey, tierFromWins, type BotDef } from "@/lib/game";
 import { Button } from "@/components/ui/button";
+import DuelArena from "@/components/DuelArena";
+import TournamentArena from "@/components/TournamentArena";
 import { cn } from "@/lib/utils";
 
 type Phase = "home" | "countdown" | "fight" | "result";
@@ -174,24 +176,11 @@ export default function BattlePage() {
           </ul>
         </section>
 
-        {/* Mode mendatang — jelas tertutup, bukan link mati */}
-        <section className="mt-8 space-y-2" aria-label="Mode mendatang">
-          {[
-            { name: "PRIVATE DUEL", desc: "Tantang temanmu 1v1 secara langsung." },
-            { name: "TOURNAMENT", desc: "SQL Cup #1 — bracket 16 pemain." },
-          ].map((m) => (
-            <div key={m.name} className="flex items-center gap-4 rounded-md border border-dashed border-border px-4 py-3 opacity-70">
-              <Swords className="size-4 text-muted-foreground" aria-hidden />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-muted-foreground">{m.name}</p>
-                <p className="truncate text-xs text-muted-foreground">{m.desc}</p>
-              </div>
-              <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                Segera hadir
-              </span>
-            </div>
-          ))}
-        </section>
+        {/* PRIVATE DUEL — live 1v1 via kode */}
+        <DuelArena />
+
+        {/* TOURNAMENT — SQL Cup bracket */}
+        {data && <TournamentArena role={data.user.role} />}
       </div>
     );
   }
