@@ -237,6 +237,35 @@ const schema = defineSchema(
     })
       .index("by_user", ["userId"])
       .index("by_user_lesson", ["userId", "lessonId"]),
+
+    /* --------------- Weekly Boss Challenge ------------------ */
+    weeklyBoss: defineTable({
+      weekKey: v.string(), // "2026-W35"
+      title: v.string(),
+      description: v.string(),
+      datasetKey: v.string(), // "school" | "kantin"
+      solutionSql: v.string(), // jawaban server
+      xp: v.number(),
+      difficulty: v.union(
+        v.literal("easy"),
+        v.literal("medium"),
+        v.literal("hard"),
+      ),
+      createdAt: v.number(),
+    })
+      .index("by_week", ["weekKey"]),
+
+    weeklyBossSubmissions: defineTable({
+      weekKey: v.string(),
+      userId: v.id("users"),
+      sqlText: v.string(),
+      correct: v.boolean(),
+      elapsedMs: v.number(),
+      xpEarned: v.number(),
+      at: v.number(),
+    })
+      .index("by_week_user", ["weekKey", "userId"])
+      .index("by_user", ["userId"]),
   },
   {
     schemaValidation: false,

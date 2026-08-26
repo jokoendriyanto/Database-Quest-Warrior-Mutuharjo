@@ -67,14 +67,36 @@ export interface BadgeDef {
 }
 
 export const BADGES: BadgeDef[] = [
+  // === Learning ===
   { id: "first_query", label: "First Query", icon: "🚀", desc: "Jalankan query SQL pertamamu." },
   { id: "no_hint", label: "Pure Skill", icon: "🧠", desc: "Selesaikan challenge tanpa hint sama sekali." },
   { id: "first_lesson", label: "First Step", icon: "👣", desc: "Tamatkan pelajaran pertamamu." },
   { id: "lesson_5", label: "Knowledge Seeker", icon: "📚", desc: "Tamatkan 5 pelajaran." },
+  { id: "lesson_15", label: "Scholar", icon: "🎓", desc: "Tamatkan 15 pelajaran." },
   { id: "exercise_10", label: "Query Grinder", icon: "⚙️", desc: "Selesaikan 10 latihan SQL." },
+  { id: "exercise_25", label: "SQL Warrior", icon: "⚔️", desc: "Selesaikan 25 latihan SQL." },
+  { id: "exercise_50", label: "Query Master", icon: "👑", desc: "Selesaikan 50 latihan SQL." },
+  { id: "perfect_quiz", label: "Quiz Ace", icon: "💯", desc: "Lulus kuis dengan skor sempurna (semua benar)." },
+  { id: "quiz_streak_5", label: "Quiz Streak", icon: "🎯", desc: "Lulus 5 kuis berturut-turut." },
+  // === World ===
+  { id: "world_1_complete", label: "DB Explorer", icon: "🌍", desc: "Selesaikan semua lesson di World 1." },
+  { id: "world_5_complete", label: "World Traveler", icon: "🗺️", desc: "Selesaikan semua lesson di 5 world." },
+  { id: "world_all_complete", label: "World Conqueror", icon: "🏆", desc: "Selesaikan semua lesson di semua world." },
+  // === Battle ===
   { id: "first_battle_win", label: "Arena Rookie", icon: "🥊", desc: "Menangkan pertarungan pertamamu." },
   { id: "bot_slayer", label: "Bot Slayer", icon: "🤖", desc: "Kalahkan bot 5 kali." },
+  { id: "bot_master", label: "Bot Master", icon: "👾", desc: "Kalahkan bot Nightmare." },
+  { id: "duel_first_win", label: "Duel Champion", icon: "⚡", desc: "Menangkan duel 1v1 pertamamu." },
+  { id: "duel_streak_3", label: "Duel Streak", icon: "🔥", desc: "Menangkan 3 duel berturut-turut." },
+  { id: "tournament_champion", label: "Cup Champion", icon: "🏅", desc: "Menangkan SQL Cup (turnamen)." },
+  // === Social ===
   { id: "week_warrior", label: "7 Day Warrior", icon: "🔥", desc: "Jaga streak selama 7 hari." },
+  { id: "month_warrior", label: "30 Day Legend", icon: "💎", desc: "Jaga streak selama 30 hari." },
+  { id: "night_owl", label: "Night Owl", icon: "🦉", desc: "Selesaikan latihan setelah jam 10 malam." },
+  { id: "early_bird", label: "Early Bird", icon: "🐦", desc: "Selesaikan latihan sebelum jam 7 pagi." },
+  { id: "comeback_king", label: "Comeback King", icon: "👑", desc: "Menangkan battle setelah kalah 3 kali." },
+  { id: "first_assignment", label: "Task Taker", icon: "📝", desc: "Selesaikan tugas pertama dari guru." },
+  { id: "social_butterfly", label: "Social Butterfly", icon: "🦋", desc: "Ikut 5 duel dengan teman berbeda." },
 ];
 
 export function badgeById(id: string): BadgeDef | undefined {

@@ -119,7 +119,7 @@ export default function Dashboard() {
   return (
     <div className="mx-auto max-w-[1200px] space-y-6">
       {/* ============================== HERO ============================== */}
-      <section className="panel-raised p-6 sm:p-8" aria-label="Profil singkat">
+      <section className="panel-raised animate-fade-in p-6 sm:p-8" style={{ animationDelay: "0ms" }} aria-label="Profil singkat">
         <p className="kicker">WELCOME BACK, WARRIOR</p>
         <div className="mt-3 flex flex-wrap items-center gap-4">
           {user.avatarUrl ? (
@@ -186,7 +186,7 @@ export default function Dashboard() {
       </nav>
 
       {/* ============================ STAT TILES ========================== */}
-      <section aria-label="Statistik warrior">
+      <section aria-label="Statistik warrior" className="animate-fade-in" style={{ animationDelay: "100ms" }}>
         <h2 className="kicker mb-3">STATISTIK WARRIOR</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {statTiles.map((s) => (
@@ -201,7 +201,7 @@ export default function Dashboard() {
       </section>
 
       {/* ========================= XP → NEXT LEVEL ======================== */}
-      <section className="panel p-5" aria-label="Progres XP">
+      <section className="panel animate-fade-in p-5" style={{ animationDelay: "200ms" }} aria-label="Progres XP">
         <div className="flex items-end justify-between gap-4">
           <p className="font-mono text-sm font-semibold">
             LV {level} <span className="text-muted-foreground">→ LV {level + 1}</span>

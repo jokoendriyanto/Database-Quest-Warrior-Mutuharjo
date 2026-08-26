@@ -10,6 +10,17 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes, useLocation } from "react-router";
 import "./index.css";
 
+// Apply theme before React mounts to prevent flash
+(function initTheme() {
+  const stored = localStorage.getItem("dq-theme");
+  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  if (stored === "dark" || (!stored && prefersDark)) {
+    document.documentElement.classList.add("dark");
+  } else {
+    document.documentElement.classList.remove("dark");
+  }
+})();
+
 // Lazy load route components for better code splitting
 const Landing = lazy(() => import("./pages/Landing.tsx"));
 const AuthPage = lazy(() => import("./pages/Auth.tsx"));

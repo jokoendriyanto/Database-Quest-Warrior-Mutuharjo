@@ -251,8 +251,37 @@ export const completeLesson = mutation({
     await ctx.db.patch(stats._id, { lessonsCompleted });
 
     const extraBadges: string[] = [];
-    if (!stats.badges.includes("first_lesson")) extraBadges.push("first_lesson");
-    if (lessonsCompleted >= 5 && !stats.badges.includes("lesson_5")) extraBadges.push("lesson_5");
+    const has = (id: string) => stats.badges.includes(id) || extraBadges.includes(id);
+    const add = (id: string) => { if (!has(id)) extraBadges.push(id); };
+
+    if (!has("first_lesson")) add("first_lesson");
+    if (lessonsCompleted >= 5) add("lesson_5");
+    if (lessonsCompleted >= 15) add("lesson_15");
+
+    // Check world completion
+    const entry = LESSON_MAP.get(lessonId);
+    if (entry) {
+      const worldLessons = entry.world.lessons.map((l) => l.id);
+      const completedInWorld = await ctx.db
+        .query("lessonProgress")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .collect();
+      const completedIds = new Set(completedInWorld.map((p) => p.lessonId));
+      const allWorldDone = worldLessons.every((id) => completedIds.has(id) || id === lessonId);
+      if (allWorldDone) {
+        const worldNum = entry.world.num;
+        if (worldNum === 1) add("world_1_complete");
+        // Count total worlds completed
+        let worldsCompleted = 0;
+        for (const [, wEntry] of LESSON_MAP) {
+          if (wEntry.world.num > 16) continue;
+          const wLessons = wEntry.world.lessons.map((l) => l.id);
+          if (wLessons.every((id) => completedIds.has(id) || id === lessonId)) worldsCompleted++;
+        }
+        if (worldsCompleted >= 5) add("world_5_complete");
+        if (worldsCompleted >= 16) add("world_all_complete");
+      }
+    }
 
     const result = await finalize(ctx, { ...stats, lessonsCompleted }, 20, extraBadges);
     return {
@@ -407,14 +436,35 @@ export const dashboard = query({
 
 /* ------------------------------- leaderboard ---------------------------- */
 
+function getSemesterDates(semester: string): { from: number; to: number } {
+  const now = new Date();
+  const year = now.getFullYear();
+  if (semester === "s1") {
+    // Semester 1: Juli - Desember
+    return { from: new Date(year, 6, 1).getTime(), to: new Date(year, 11, 31, 23, 59, 59).getTime() };
+  } else if (semester === "s2") {
+    // Semester 2: Januari - Juni
+    return { from: new Date(year, 0, 1).getTime(), to: new Date(year, 5, 30, 23, 59, 59).getTime() };
+  } else if (semester === "all") {
+    return { from: 0, to: Date.now() };
+  }
+  // Default: semester aktif
+  const month = now.getMonth();
+  if (month >= 6) return { from: new Date(year, 6, 1).getTime(), to: new Date(year, 11, 31, 23, 59, 59).getTime() };
+  return { from: new Date(year, 0, 1).getTime(), to: new Date(year, 5, 30, 23, 59, 59).getTime() };
+}
+
 export const leaderboard = query({
   args: {
     className: v.optional(v.string()),
     mode: v.optional(v.union(v.literal("xp"), v.literal("rating"))),
+    semester: v.optional(v.union(v.literal("all"), v.literal("s1"), v.literal("s2"), v.literal("active"))),
   },
   handler: async (ctx, args) => {
     const mode = args.mode ?? "xp";
     const classFilter = args.className?.trim() ?? "";
+    const semester = args.semester ?? "active";
+    const semesterDates = getSemesterDates(semester);
 
     let top;
     if (mode === "rating") {
@@ -439,6 +489,11 @@ export const leaderboard = query({
       if (u.role && u.role !== "student") continue;
       if (classFilter && (u.className ?? "") !== classFilter) continue;
       if (mode === "xp" && s.xp <= 0) continue;
+      // Filter by semester based on last active date
+      if (semester !== "all") {
+        const lastActive = s.lastActiveDate ? new Date(s.lastActiveDate).getTime() : 0;
+        if (lastActive < semesterDates.from || lastActive > semesterDates.to) continue;
+      }
       entries.push({
         username: u.username,
         name: u.name ?? u.username,

@@ -4,11 +4,19 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
 type Tab = "global" | "class" | "ranked";
+type Semester = "active" | "s1" | "s2" | "all";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "global", label: "Global XP" },
   { key: "class", label: "Kelasku" },
   { key: "ranked", label: "Ranked Duel" },
+];
+
+const SEMESTERS: { key: Semester; label: string }[] = [
+  { key: "active", label: "Semester Ini" },
+  { key: "s1", label: "S1 (Jul-Des)" },
+  { key: "s2", label: "S2 (Jan-Jun)" },
+  { key: "all", label: "Semua" },
 ];
 
 interface Entry {
@@ -27,12 +35,17 @@ interface Entry {
 
 export default function Leaderboard() {
   const [tab, setTab] = useState<Tab>("global");
+  const [semester, setSemester] = useState<Semester>("active");
   const dash = useQuery(api.game.dashboard);
   const myClass = dash?.user.className ?? "";
 
   const board = useQuery(
     api.game.leaderboard,
-    tab === "class" ? { className: myClass, mode: "xp" } : tab === "ranked" ? { mode: "rating" } : {},
+    tab === "class"
+      ? { className: myClass, mode: "xp", semester }
+      : tab === "ranked"
+        ? { mode: "rating", semester }
+        : { semester },
   ) as Entry[] | undefined;
 
   if (!board || !dash) {
@@ -83,6 +96,24 @@ export default function Leaderboard() {
             }`}
           >
             {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Semester filter */}
+      <div className="mb-5 flex flex-wrap gap-1.5">
+        {SEMESTERS.map((s) => (
+          <button
+            key={s.key}
+            type="button"
+            onClick={() => setSemester(s.key)}
+            className={`rounded-md border px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider transition-colors ${
+              semester === s.key
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border text-muted-foreground hover:border-muted-foreground/40 hover:text-foreground"
+            }`}
+          >
+            {s.label}
           </button>
         ))}
       </div>

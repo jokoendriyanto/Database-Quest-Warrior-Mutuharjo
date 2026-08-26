@@ -5,6 +5,7 @@ import type { Exercise } from "@/lib/curriculum";
 import type { Database as SqlDatabase, RunResult } from "@/lib/sql/engine";
 import { runSql, SqlError } from "@/lib/sql/engine";
 import { Button } from "@/components/ui/button";
+import { playCorrect, playWrong, playXpGain, playLevelUp } from "@/lib/sounds";
 import {
   ChevronDown,
   ChevronRight,
@@ -238,6 +239,9 @@ export function SqlPlayground({
         hintsUsed: showSolution ? 4 : hintsShown,
       });
       if (res.correct) {
+        playCorrect();
+        if (res.xpAwarded > 0) setTimeout(playXpGain, 200);
+        if (res.levelAfter > res.levelBefore) setTimeout(playLevelUp, 400);
         setSolved(true);
         setFeedback({
           correct: true,
@@ -247,6 +251,7 @@ export function SqlPlayground({
         });
         onSolved?.();
       } else if ("error" in res && res.error) {
+        playWrong();
         setFeedback({
           correct: false,
           text:
@@ -255,6 +260,7 @@ export function SqlPlayground({
               : (res.error.message ?? res.feedback),
         });
       } else {
+        playWrong();
         setFeedback({ correct: false, text: res.feedback });
       }
     } catch (err) {

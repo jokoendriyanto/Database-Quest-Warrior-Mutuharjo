@@ -136,11 +136,29 @@ export async function awardXp(
   const newXp = stats.xp + amount;
   const levelAfter = levelFromXp(newXp);
 
-  // Badge streak 7 hari
+  // Badge checks
   const newBadges: string[] = [];
-  if (streak >= 7 && !stats.badges.includes("week_warrior")) {
-    newBadges.push("week_warrior");
-  }
+  const has = (id: string) => stats.badges.includes(id) || newBadges.includes(id);
+  const add = (id: string) => { if (!has(id)) newBadges.push(id); };
+
+  // Streak badges
+  if (streak >= 7) add("week_warrior");
+  if (streak >= 30) add("month_warrior");
+
+  // Learning milestones (check after XP update)
+  if (stats.lessonsCompleted >= 5) add("lesson_5");
+  if (stats.lessonsCompleted >= 15) add("lesson_15");
+  if (stats.exercisesDone >= 10) add("exercise_10");
+  if (stats.exercisesDone >= 25) add("exercise_25");
+  if (stats.exercisesDone >= 50) add("exercise_50");
+
+  // Time-based badges
+  const hour = new Date().getUTCHours();
+  // UTC+7 untuk Indonesia: jam 3-10 UTC = 10-17 WIB (siang), jam 15-24 UTC = 22-7 WIB (malam)
+  // Night owl: 22-02 WIB = 15-19 UTC
+  if (hour >= 15 && hour <= 19) add("night_owl");
+  // Early bird: 05-07 WIB = 22-24 UTC
+  if (hour >= 22 || hour === 0) add("early_bird");
 
   await ctx.db.patch(stats._id, {
     ...patch,

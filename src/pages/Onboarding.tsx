@@ -8,6 +8,8 @@ import { AVATAR_OPTIONS } from "@/lib/game";
 import { Loader2, PartyPopper, ArrowRight, Flame, Trophy, Swords, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AvatarUpload } from "@/components/AvatarUpload";
+import { runSql } from "@/lib/sql/engine";
+import { exerciseDataset } from "@/lib/curriculum";
 
 export default function Onboarding() {
   const { user, isLoading } = useAuth();
@@ -17,6 +19,9 @@ export default function Onboarding() {
   const [step, setStep] = useState(0);
   const [avatar, setAvatar] = useState<string | null>(null);
   const [avatarUploaded, setAvatarUploaded] = useState(false);
+  const [tutorialSql, setTutorialSql] = useState("");
+  const [tutorialResult, setTutorialResult] = useState<{ correct: boolean; rows: any[] } | null>(null);
+  const [tutorialError, setTutorialError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   if (isLoading) {
@@ -50,17 +55,35 @@ export default function Onboarding() {
     setAvatar(null); // clear emoji selection
   }, []);
 
+  const handleTutorialRun = useCallback(() => {
+    setTutorialError(null);
+    setTutorialResult(null);
+    try {
+      const db = exerciseDataset("school");
+      const sql = tutorialSql.trim().replace(/;\s*$/, "");
+      if (!sql.toUpperCase().startsWith("SELECT")) {
+        setTutorialError("Mulai dengan SELECT untuk menampilkan data.");
+        return;
+      }
+      const result = runSql(sql, db);
+      const correct = result.rows.length > 0;
+      setTutorialResult({ correct, rows: result.rows.slice(0, 5) });
+    } catch (e: any) {
+      setTutorialError(e?.message ?? "Query error.");
+    }
+  }, [tutorialSql]);
+
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden bg-background">
       <div className="grid-motif absolute inset-0" aria-hidden />
 
       {/* step indicator — mono numbering, bukan dots dekoratif */}
       <div className="relative z-10 mx-auto mt-10 w-full max-w-xl">
-        <p className="kicker">Setup · Step {step + 1} / 3</p>
+        <p className="kicker">Setup · Step {step + 1} / 4</p>
         <div className="inset-track mt-2">
           <div
             className="h-full rounded-full bg-primary transition-all duration-300"
-            style={{ width: `${((step + 1) / 3) * 100}%` }}
+            style={{ width: `${((step + 1) / 4) * 100}%` }}
           />
         </div>
       </div>
@@ -159,12 +182,7 @@ SELECT * FROM journey WHERE student = '${firstName.toLowerCase()}';`}
             </div>
 
             <div className="mt-7 flex gap-2">
-              <Button variant="ghost" onClick={() => setStep(0)} className="h-11">Kembali</Button>
-              <Button
-                disabled={!avatar && !avatarUploaded}
-                onClick={() => setStep(2)}
-                className="h-11 flex-1 font-bold sm:flex-none sm:px-8"
-              >
+              <Button variant="ghost" onClick={() => setStep(0)} className="h-11">Kembali</Button>              <Button disabled={!avatar && !avatarUploaded} onClick={() => setStep(2)} className="h-11 flex-1 font-bold sm:flex-none sm:px-8">
                 Lanjut <ArrowRight className="size-4" />
               </Button>
             </div>
@@ -172,6 +190,53 @@ SELECT * FROM journey WHERE student = '${firstName.toLowerCase()}';`}
         )}
 
         {step === 2 && (
+          <section className="panel-raised w-full p-8">
+            <p className="kicker">Latihan Pertama</p>
+            <h1 className="mt-2 text-2xl font-extrabold tracking-tight">Coba SQL Pertamamu</h1>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              Jalankan query pertama — ini cara kerjanya.
+            </p>
+
+            <div className="mt-5 rounded-lg border border-border bg-card p-4">
+              <p className="kicker mb-2">SOAL</p>
+              <p className="text-sm font-semibold">Tampilkan nama semua siswa dari tabel <code className="rounded bg-muted px-1 font-mono text-xs">students</code>.</p>
+              <pre className="mt-2 rounded bg-muted/60 p-2 font-mono text-xs">SELECT name FROM students;</pre>
+            </div>
+
+            <div className="mt-4">
+              <Label>Tulis query-mu:</Label>
+              <textarea
+                value={tutorialSql}
+                onChange={(e) => { setTutorialSql(e.target.value); setTutorialResult(null); setTutorialError(null); }}
+                placeholder="SELECT ..."
+                className="mt-1 w-full rounded-lg border border-border bg-card p-3 font-mono text-sm focus:border-primary focus:outline-none"
+                rows={3}
+              />
+            </div>
+
+            {tutorialError && (
+              <p className="mt-2 rounded border border-destructive/40 bg-destructive/10 px-2 py-1 text-xs text-destructive">{tutorialError}</p>
+            )}
+            {tutorialResult && (
+              <div className="mt-2 rounded-md border border-success/40 bg-success/10 p-3">
+                <p className="text-sm font-bold text-success">✓ Benar! Query-mu jalan.</p>
+                <pre className="mt-1 font-mono text-xs text-muted-foreground">{JSON.stringify(tutorialResult.rows)}</pre>
+              </div>
+            )}
+
+            <div className="mt-5 flex gap-2">
+              <Button variant="ghost" onClick={() => setStep(1)} className="h-11">Kembali</Button>
+              <Button variant="outline" onClick={handleTutorialRun} disabled={!tutorialSql.trim()} className="h-11">
+                Test Query
+              </Button>
+              <Button onClick={() => setStep(3)} className="h-11 flex-1 font-bold sm:flex-none sm:px-8">
+                {tutorialResult?.correct ? "Lanjut" : "Skip →"} <ArrowRight className="size-4" />
+              </Button>
+            </div>
+          </section>
+        )}
+
+        {step === 3 && (
           <section className="panel-raised w-full p-8">
             <p className="kicker">Aturan main</p>
             <h1 className="mt-2 text-2xl font-extrabold tracking-tight">Cara main dalam 30 detik</h1>
@@ -192,7 +257,7 @@ SELECT * FROM journey WHERE student = '${firstName.toLowerCase()}';`}
               ))}
             </ul>
             <div className="mt-7 flex gap-2">
-              <Button variant="ghost" onClick={() => setStep(1)} disabled={saving} className="h-11">Kembali</Button>
+              <Button variant="ghost" onClick={() => setStep(2)} disabled={saving} className="h-11">Kembali</Button>
               <Button onClick={finish} disabled={saving} className="h-11 flex-1 font-bold sm:flex-none sm:px-8">
                 {saving ? (
                   <Loader2 className="size-4 animate-spin" />

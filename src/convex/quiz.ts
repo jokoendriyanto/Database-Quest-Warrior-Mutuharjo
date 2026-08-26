@@ -144,7 +144,28 @@ export const submitQuiz = mutation({
     const passed = score >= Math.ceil(total * 0.75); // 3/3 · 3/4 · 4/5
     await ctx.db.patch(sessionId, { status: passed ? "passed" : "failed" });
 
-    return { passed, score, total, results };
+    // Badge checks
+    const { findStats, grantBadge } = await import("./gameState");
+    const stats = await findStats(ctx, userId);
+    const newBadges: string[] = [];
+    if (passed && score === total) {
+      const awarded = await grantBadge(ctx, stats, "perfect_quiz");
+      newBadges.push(...awarded);
+    }
+    // Check quiz streak (5 consecutive passes)
+    if (passed) {
+      const recentPassed = await ctx.db
+        .query("quizSessions")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .order("desc")
+        .take(5);
+      if (recentPassed.length >= 5 && recentPassed.every((s) => s.status === "passed")) {
+        const awarded = await grantBadge(ctx, stats, "quiz_streak_5");
+        newBadges.push(...awarded);
+      }
+    }
+
+    return { passed, score, total, results, newBadges };
   },
 });
 

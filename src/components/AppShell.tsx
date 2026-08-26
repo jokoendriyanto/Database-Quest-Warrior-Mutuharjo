@@ -14,9 +14,12 @@ import {
   LogOut,
   PanelLeft,
   X,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
+import { useTheme } from "@/hooks/use-theme";
 import { levelProgress, rankFromLevel } from "@/lib/game";
 import { cn } from "@/lib/utils";
 
@@ -94,6 +97,32 @@ function SidebarXp() {
         {current.toLocaleString()} / {needed.toLocaleString()} XP → LV {level + 1}
       </p>
     </div>
+  );
+}
+
+function ThemeToggle() {
+  const { theme, toggleTheme } = useTheme();
+  return (
+    <button
+      onClick={toggleTheme}
+      aria-label={theme === "dark" ? "Ganti ke mode terang" : "Ganti ke mode gelap"}
+      className="border border-border p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+    >
+      {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
+    </button>
+  );
+}
+
+function SidebarThemeToggle() {
+  const { theme, toggleTheme } = useTheme();
+  return (
+    <button
+      onClick={toggleTheme}
+      className="flex w-full items-center gap-2 px-1 py-1.5 text-left font-mono text-[11px] text-muted-foreground transition-colors hover:text-foreground"
+    >
+      {theme === "dark" ? <Sun className="size-3" /> : <Moon className="size-3" />}
+      {theme === "dark" ? "Mode Terang" : "Mode Gelap"}
+    </button>
   );
 }
 
@@ -250,6 +279,9 @@ export function AppShell() {
         </nav>
 
         <SidebarXp />
+        <div className="border-t border-border px-3 py-2">
+          <SidebarThemeToggle />
+        </div>
         <div className="border-t border-border px-2 py-1">
           <SignOutButton onDone={handleSignOut} />
         </div>
@@ -343,8 +375,9 @@ export function AppShell() {
               </ul>
             </nav>
 
-            <div className="shrink-0">
+            <div className="flex shrink-0 items-center gap-1.5">
               <TopbarStreak />
+              <ThemeToggle />
             </div>
           </div>
         </header>

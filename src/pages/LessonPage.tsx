@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { ArrowLeft, ArrowRight, Check, CircleHelp, ShieldAlert, Timer } from "lucide-react";
+import { playQuizPassed, playWrong } from "@/lib/sounds";
 import {
   exerciseDataset,
   getExercise,
@@ -226,6 +227,8 @@ function QuizSection({
     setBusy(true);
     try {
       const r = await submit({ sessionId: s.id, picks });
+      if (r.passed) playQuizPassed();
+      else playWrong();
       setResult(r);
       setSession(null);
       setWarning(null);

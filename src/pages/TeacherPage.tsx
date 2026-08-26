@@ -11,13 +11,15 @@ import AssignmentsPanel from "@/components/teacher/AssignmentsPanel";
 import ChallengesPanel from "@/components/teacher/ChallengesPanel";
 import PasswordResetPanel from "@/components/teacher/PasswordResetPanel";
 import ClassesPanel from "@/components/teacher/ClassesPanel";
+import WeeklyBossPanel from "@/components/teacher/WeeklyBossPanel";
 
-type Tab = "siswa" | "tugas" | "tantangan" | "password" | "kelas";
+type Tab = "siswa" | "tugas" | "tantangan" | "boss" | "password" | "kelas";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "siswa", label: "Siswa" },
   { key: "tugas", label: "Tugas" },
   { key: "tantangan", label: "Tantangan" },
+  { key: "boss", label: "Weekly Boss" },
   { key: "password", label: "Reset Password" },
   { key: "kelas", label: "Kelas" },
 ];
@@ -172,6 +174,7 @@ export default function TeacherPage() {
 
       {tab === "tugas" && <AssignmentsPanel />}
       {tab === "tantangan" && <ChallengesPanel />}
+      {tab === "boss" && <WeeklyBossPanel />}
       {tab === "password" && <PasswordResetPanel />}
       {tab === "kelas" && <ClassesPanel />}
 

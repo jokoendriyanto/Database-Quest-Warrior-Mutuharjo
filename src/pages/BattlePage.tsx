@@ -15,6 +15,7 @@ import { BOTS, botByKey, tierFromWins, type BotDef } from "@/lib/game";
 import { Button } from "@/components/ui/button";
 import DuelArena from "@/components/DuelArena";
 import TournamentArena from "@/components/TournamentArena";
+import WeeklyBossArena from "@/components/WeeklyBossArena";
 import { cn } from "@/lib/utils";
 
 type Phase = "home" | "countdown" | "fight" | "result";
@@ -175,6 +176,9 @@ export default function BattlePage() {
             ))}
           </ul>
         </section>
+
+        {/* WEEKLY BOSS — challenge mingguan */}
+        <WeeklyBossArena />
 
         {/* PRIVATE DUEL — live 1v1 via kode */}
         <DuelArena />
