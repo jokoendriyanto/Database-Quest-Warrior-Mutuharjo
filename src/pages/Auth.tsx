@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation } from "convex/react";
@@ -45,32 +45,31 @@ function AuthInner() {
   const [mode, setMode] = useState<"login" | "register">(
     modeParam === "register" ? "register" : "login",
   );
+  // login punya dua metode: password (default) atau kode email
+  const [loginMethod, setLoginMethod] = useState<"password" | "otp">("password");
   const [step, setStep] = useState<"form" | "otp">("form");
   const [pendingEmail, setPendingEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // guard: selama registrasi berlangsung, jangan auto-redirect duluan
+  const registeringRef = useRef(false);
+
   // form fields
+  const [identifier, setIdentifier] = useState(""); // login: username atau email
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [className, setClassName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"student" | "teacher">("student");
-  const [isRegistering, setIsRegistering] = useState(mode === "register");
-
-  // registration state kept across steps
-  const [regData, setRegData] = useState<{
-    name: string;
-    username: string;
-    className: string;
-    role: "student" | "teacher";
-  } | null>(null);
 
   const completeProfile = useMutation(api.profile.completeProfile);
 
   useEffect(() => {
-    if (!authLoading && isAuthenticated && step === "form") {
+    if (!authLoading && isAuthenticated && step === "form" && !registeringRef.current) {
       navigate(redirect);
     }
   }, [authLoading, isAuthenticated, step, navigate, redirect]);
@@ -79,12 +78,53 @@ function AuthInner() {
   const usernameValid = /^[a-z0-9_]{3,20}$/.test(usernameNorm);
 
   const usernameTakenResult = useQuery(api.profile.checkUsername, {
-    username: isRegistering && usernameValid ? usernameNorm : "___idle___",
+    username: mode === "register" && usernameValid ? usernameNorm : "___idle___",
   });
   const usernameAvailable =
-    isRegistering && usernameValid ? usernameTakenResult !== false : true;
+    mode === "register" && usernameValid ? usernameTakenResult !== false : true;
 
-  /* ------------------------- kirim kode verifikasi ------------------------ */
+  /** resolveIdentifier lewat convex client (bukan fetch) — helper kecil */
+  async function fetchResolved(identifier: string): Promise<string | null> {
+    const { ConvexHttpClient } = await import("convex/browser");
+    const client = new ConvexHttpClient(import.meta.env.VITE_CONVEX_URL as string);
+    const res = await client.query(api.profile.resolveIdentifier, { identifier });
+    return res?.email ?? null;
+  }
+
+  /* --------------------- login metode 1: password (default) -------------------- */
+
+  const handlePasswordLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    const id = identifier.trim();
+    if (!id || !password) return;
+    setBusy(true);
+    try {
+      let targetEmail = id.toLowerCase();
+      if (!id.includes("@")) {
+        const resolved = await fetchResolved(id);
+        if (!resolved) throw new Error("Invalid credentials");
+        targetEmail = resolved;
+      }
+      await signIn("password", { flow: "signIn", email: targetEmail, password });
+      // sukses — effect di atas yang mengarahkan ke tujuan
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      setError(
+        msg.includes("Invalid credentials")
+          ? "Username/email atau password salah."
+          : msg.includes("Too many") || msg.includes("rate")
+            ? "Terlalu banyak percobaan. Tunggu sebentar, lalu coba lagi."
+            : msg || "Gagal masuk. Coba lagi ya.",
+      );
+      setPassword("");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /* --------------------- login metode 2: kode email (opsional) ------------------ */
+
   const startVerification = async (targetEmail: string) => {
     await signIn("email-otp", { email: targetEmail });
     setPendingEmail(targetEmail);
@@ -92,20 +132,18 @@ function AuthInner() {
     setOtp("");
   };
 
-  const handleLoginSubmit = async (e: React.FormEvent) => {
+  const handleOtpLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    const identifier = email.trim().toLowerCase();
-    if (!identifier) return;
+    const id = identifier.trim().toLowerCase();
+    if (!id) return;
     setBusy(true);
     try {
-      let targetEmail = identifier;
-      if (!identifier.includes("@")) {
-        const resolved = await fetchResolved(identifier);
+      let targetEmail = id;
+      if (!id.includes("@")) {
+        const resolved = await fetchResolved(id);
         if (!resolved) {
-          throw new Error(
-            `Username "${identifier}" nggak ketemu. Coba cek lagi, atau daftar dulu ya!`,
-          );
+          throw new Error(`Username \"${id}\" nggak ketemu. Coba cek lagi, atau daftar dulu ya!`);
         }
         targetEmail = resolved;
       }
@@ -117,55 +155,64 @@ function AuthInner() {
     }
   };
 
-  /** resolveIdentifier lewat convex client (bukan fetch) — helper kecil */
-  async function fetchResolved(identifier: string): Promise<string | null> {
-    const { ConvexHttpClient } = await import("convex/browser");
-    const client = new ConvexHttpClient(import.meta.env.VITE_CONVEX_URL as string);
-    const res = await client.query(api.profile.resolveIdentifier, { identifier });
-    return res?.email ?? null;
-  }
-
-  const handleRegisterSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    if (!usernameAvailable) {
-      setError(`Username "${usernameNorm}" sudah dipakai. Coba yang lain ya.`);
-      return;
-    }
-    setBusy(true);
-    try {
-      setRegData({ name: name.trim(), username: usernameNorm, className, role });
-      await startVerification(email.trim().toLowerCase());
-      setIsRegistering(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Gagal mengirim kode.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleOtpSubmit = async (e: React.FormEvent) => {
+  const handleOtpVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     if (otp.length !== 6) return;
     setBusy(true);
     try {
       await signIn("email-otp", { email: pendingEmail, code: otp });
-      if (regData) {
-        await completeProfile({
-          username: regData.username,
-          name: regData.name,
-          className: regData.className || undefined,
-          role: regData.role,
-        });
-        navigate("/onboarding");
-        return;
-      }
       navigate(redirect);
-    } catch (err) {
+    } catch {
       setError("Kode verifikasi salah atau sudah kedaluwarsa. Coba lagi ya.");
-      console.error(err);
       setOtp("");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /* ------------------- registrasi: langsung, tanpa kode OTP -------------------- */
+
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (!usernameAvailable) {
+      setError(`Username \"${usernameNorm}\" sudah dipakai. Coba yang lain ya.`);
+      return;
+    }
+    if (password.length < 8) {
+      setError("Password minimal 8 karakter.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Konfirmasi password belum sama dengan password.");
+      return;
+    }
+    setBusy(true);
+    registeringRef.current = true;
+    try {
+      await signIn("password", {
+        flow: "signUp",
+        email: email.trim().toLowerCase(),
+        password,
+      });
+      await completeProfile({
+        username: usernameNorm,
+        name: name.trim(),
+        className: className || undefined,
+        role,
+      });
+      navigate("/onboarding");
+    } catch (err) {
+      registeringRef.current = false;
+      const msg = err instanceof Error ? err.message : "";
+      setError(
+        msg.includes("already exists")
+          ? "Email sudah terdaftar — coba masuk dulu ya."
+          : msg.includes("Invalid password")
+            ? "Password minimal 8 karakter."
+            : msg || "Gagal membuat akun. Coba lagi ya.",
+      );
     } finally {
       setBusy(false);
     }
@@ -231,7 +278,6 @@ WHERE effort > excuse;`}
                 onClick={() => {
                   if (step === "otp") return;
                   setMode(m);
-                  setIsRegistering(m === "register");
                   setError(null);
                 }}
                 disabled={step === "otp"}
@@ -247,24 +293,122 @@ WHERE effort > excuse;`}
             ))}
           </div>
 
-          {step === "form" && mode === "login" && (
-            <form onSubmit={handleLoginSubmit} className="mt-6 space-y-4">
+          {step === "form" && mode === "login" && loginMethod === "password" && (
+            <form onSubmit={handlePasswordLogin} className="mt-6 space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="identifier">Username atau Email</Label>
                 <Input
                   id="identifier"
                   placeholder="joko123 atau joko@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  required
+                  autoComplete="username"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <div className="flex items-baseline justify-between">
+                  <Label htmlFor="password">Password</Label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoginMethod("otp");
+                      setError(null);
+                    }}
+                    className="font-mono text-[11px] text-muted-foreground transition-colors hover:text-primary"
+                  >
+                    lupa password?
+                  </button>
+                </div>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                />
+              </div>
+              <Button type="submit" disabled={busy} className="h-11 w-full font-bold">
+                {busy ? <Loader2 className="size-4 animate-spin" /> : <>Masuk <ArrowRight className="size-4" /></>}
+              </Button>
+              <p className="text-center text-xs text-muted-foreground">
+                Belum punya akun?{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("register");
+                    setError(null);
+                  }}
+                  className="font-semibold text-foreground hover:text-primary"
+                >
+                  Daftar sekarang
+                </button>
+              </p>
+            </form>
+          )}
+
+          {step === "form" && mode === "login" && loginMethod === "otp" && (
+            <form onSubmit={handleOtpLoginSubmit} className="mt-6 space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="otp-identifier">Username atau Email</Label>
+                <Input
+                  id="otp-identifier"
+                  placeholder="joko123 atau joko@example.com"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
                   required
                   autoComplete="username"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Kode verifikasi dikirim ke email kamu — tanpa password yang gampang lupa.
+                  Kode verifikasi 6 digit dikirim ke email kamu — masuk tanpa password.
                 </p>
               </div>
               <Button type="submit" disabled={busy} className="h-11 w-full font-bold">
-                {busy ? <Loader2 className="size-4 animate-spin" /> : <>Masuk <ArrowRight className="size-4" /></>}
+                {busy ? <Loader2 className="size-4 animate-spin" /> : <>Kirim Kode Email <MailQuestion className="size-4" /></>}
+              </Button>
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginMethod("password");
+                  setError(null);
+                }}
+                className="w-full text-center text-xs text-muted-foreground transition-colors hover:text-foreground"
+              >
+                ← Kembali masuk dengan password
+              </button>
+            </form>
+          )}
+
+          {step === "otp" && (
+            <form onSubmit={handleOtpVerify} className="mt-6 space-y-4 text-center">
+              <MailQuestion className="mx-auto size-8 text-primary" />
+              <div>
+                <p className="font-bold">Cek email kamu</p>
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  Kami mengirim 6 digit kode ke{" "}
+                  <span className="font-semibold text-foreground">{pendingEmail}</span>
+                </p>
+              </div>
+              <div className="flex justify-center">
+                <InputOTP value={otp} onChange={setOtp} maxLength={6} disabled={busy}>
+                  <InputOTPGroup>
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <InputOTPSlot key={i} index={i} />
+                    ))}
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
+              <Button
+                type="submit"
+                disabled={busy || otp.length !== 6}
+                className="h-11 w-full font-bold"
+              >
+                {busy ? <Loader2 className="size-4 animate-spin" /> : <>Verifikasi & Masuk <ArrowRight className="size-4" /></>}
+              </Button>
+              <Button type="button" variant="ghost" className="w-full" onClick={() => setStep("form")} disabled={busy}>
+                Pakai email / akun lain
               </Button>
             </form>
           )}
@@ -287,7 +431,7 @@ WHERE effort > excuse;`}
                   {!usernameValid
                     ? "3–20 karakter: huruf kecil, angka, underscore."
                     : usernameTakenResult === false
-                      ? `Username "${usernameNorm}" sudah dipakai`
+                      ? `Username \"${usernameNorm}\" sudah dipakai`
                       : "Username tersedia ✓"}
                 </p>
               </Field>
@@ -326,6 +470,28 @@ WHERE effort > excuse;`}
                   autoComplete="email"
                 />
               </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Password">
+                  <Input
+                    required
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="min. 8 karakter"
+                    autoComplete="new-password"
+                  />
+                </Field>
+                <Field label="Ulangi Password">
+                  <Input
+                    required
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="ulangi password"
+                    autoComplete="new-password"
+                  />
+                </Field>
+              </div>
               <Button
                 type="submit"
                 disabled={busy || !usernameValid || usernameTakenResult === false || !className}
@@ -333,38 +499,9 @@ WHERE effort > excuse;`}
               >
                 {busy ? <Loader2 className="size-4 animate-spin" /> : <>Buat Akun <UserRoundPen className="size-4" /></>}
               </Button>
-            </form>
-          )}
-
-          {step === "otp" && (
-            <form onSubmit={handleOtpSubmit} className="mt-6 space-y-4 text-center">
-              <MailQuestion className="mx-auto size-8 text-primary" />
-              <div>
-                <p className="font-bold">Cek email kamu</p>
-                <p className="mt-0.5 text-sm text-muted-foreground">
-                  Kami mengirim 6 digit kode ke{" "}
-                  <span className="font-semibold text-foreground">{pendingEmail}</span>
-                </p>
-              </div>
-              <div className="flex justify-center">
-                <InputOTP value={otp} onChange={setOtp} maxLength={6} disabled={busy}>
-                  <InputOTPGroup>
-                    {Array.from({ length: 6 }).map((_, i) => (
-                      <InputOTPSlot key={i} index={i} />
-                    ))}
-                  </InputOTPGroup>
-                </InputOTP>
-              </div>
-              <Button
-                type="submit"
-                disabled={busy || otp.length !== 6}
-                className="h-11 w-full font-bold"
-              >
-                {busy ? <Loader2 className="size-4 animate-spin" /> : <>Verifikasi & Masuk <ArrowRight className="size-4" /></>}
-              </Button>
-              <Button type="button" variant="ghost" className="w-full" onClick={() => setStep("form")} disabled={busy}>
-                Pakai email / akun lain
-              </Button>
+              <p className="text-center text-xs text-muted-foreground">
+                Langsung masuk setelah daftar — tanpa verifikasi email.
+              </p>
             </form>
           )}
 
