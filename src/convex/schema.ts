@@ -44,6 +44,12 @@ const schema = defineSchema(
       .index("email", ["email"]) // index for the email. do not remove or modify
       .index("username", ["username"]),
 
+    /* --------------- Kelas resmi — dikelola admin/guru ------------------- */
+    classes: defineTable({
+      name: v.string(),
+      createdAt: v.number(),
+    }).index("by_name", ["name"]),
+
     // Per-student gamification state. Server-side only — clients never write
     // XP/score/rating directly.
     studentStats: defineTable({
@@ -63,6 +69,11 @@ const schema = defineSchema(
       todayExercises: v.number(),
       todayCorrect: v.number(),
       badges: v.array(v.string()),
+      // PvP rating (ELO-lite) — hasil duel & turnamen
+      duelRating: v.optional(v.number()), // default 1000
+      duelWins: v.optional(v.number()),
+      duelLosses: v.optional(v.number()),
+      duelDraws: v.optional(v.number()),
     })
       .index("by_user", ["userId"])
       .index("by_xp", ["xp"]),
@@ -117,10 +128,62 @@ const schema = defineSchema(
       winnerId: v.optional(v.id("users")),
       isDraw: v.optional(v.boolean()),
       startedAt: v.optional(v.number()),
+      finishedAt: v.optional(v.number()),
       createdAt: v.number(),
     })
       .index("by_code", ["code"])
-      .index("by_status", ["status"]),
+      .index("by_status", ["status"])
+      .index("by_host", ["hostId"])
+      .index("by_guest", ["guestId"]),
+
+    /* ------------------- Tugas dari guru --------------------------------- */
+    assignments: defineTable({
+      teacherId: v.id("users"),
+      title: v.string(),
+      description: v.optional(v.string()),
+      // "exercise" → refId exerciseId kurikulum; "lesson" → refId lessonId;
+      // "challenge" → refId customChallenges buatan guru
+      kind: v.union(
+        v.literal("exercise"),
+        v.literal("lesson"),
+        v.literal("challenge"),
+      ),
+      refId: v.string(),
+      className: v.string(), // "" = semua kelas
+      dueAt: v.optional(v.number()),
+      createdAt: v.number(),
+    })
+      .index("by_class", ["className"])
+      .index("by_teacher", ["teacherId"]),
+
+    assignmentSubmissions: defineTable({
+      assignmentId: v.id("assignments"),
+      userId: v.id("users"),
+      completedAt: v.number(),
+    })
+      .index("by_assignment", ["assignmentId"])
+      .index("by_assignment_user", ["assignmentId", "userId"]),
+
+    /* --------------- Studi kasus / challenge buatan guru ------------------ */
+    customChallenges: defineTable({
+      teacherId: v.id("users"),
+      title: v.string(),
+      prompt: v.string(), // instruksi kasus untuk siswa
+      datasetKey: v.string(), // "school" | "kantin" (divalidasi runtime)
+      solutionSql: v.string(), // tidak pernah dikirim ke siswa
+      xp: v.number(),
+      createdAt: v.number(),
+    }).index("by_teacher", ["teacherId"]),
+
+    challengeSubmissions: defineTable({
+      challengeId: v.id("customChallenges"),
+      userId: v.id("users"),
+      sqlText: v.string(),
+      correct: v.boolean(),
+      at: v.number(),
+    })
+      .index("by_challenge_user", ["challengeId", "userId"])
+      .index("by_user", ["userId"]),
 
     /* --------------------------- Tournament ------------------------------ */
     tournaments: defineTable({

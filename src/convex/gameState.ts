@@ -19,6 +19,11 @@ export interface StatsDoc {
   todayExercises: number;
   todayCorrect: number;
   badges: string[];
+  // PvP rating (ELO-lite) — hasil duel & turnamen
+  duelRating?: number;
+  duelWins?: number;
+  duelLosses?: number;
+  duelDraws?: number;
 }
 
 export function todayStr(): string {
@@ -48,6 +53,10 @@ export function zeroStats(userId: any): StatsDoc {
     todayExercises: 0,
     todayCorrect: 0,
     badges: [],
+    duelRating: 1000,
+    duelWins: 0,
+    duelLosses: 0,
+    duelDraws: 0,
   } as unknown as StatsDoc;
 }
 
@@ -82,6 +91,10 @@ export async function getStats(ctx: { db: any }, userId: any): Promise<StatsDoc>
     todayExercises: 0,
     todayCorrect: 0,
     badges: [],
+    duelRating: 1000,
+    duelWins: 0,
+    duelLosses: 0,
+    duelDraws: 0,
   });
   return (await ctx.db.get(id))! as unknown as StatsDoc;
 }

@@ -354,6 +354,10 @@ export const dashboard = query({
         todayCorrect: stats.todayCorrect,
         badges: stats.badges,
         lastActiveDate: stats.lastActiveDate ?? "",
+        duelRating: stats.duelRating ?? 1000,
+        duelWins: stats.duelWins ?? 0,
+        duelLosses: stats.duelLosses ?? 0,
+        duelDraws: stats.duelDraws ?? 0,
       },
       level: levelFromXp(stats.xp),
       rank: rankFromLevel(levelFromXp(stats.xp)),
@@ -375,29 +379,51 @@ export const dashboard = query({
 /* ------------------------------- leaderboard ---------------------------- */
 
 export const leaderboard = query({
-  args: {},
-  handler: async (ctx) => {
-    const top = await ctx.db
-      .query("studentStats")
-      .withIndex("by_xp")
-      .order("desc")
-      .take(30);
+  args: {
+    className: v.optional(v.string()),
+    mode: v.optional(v.union(v.literal("xp"), v.literal("rating"))),
+  },
+  handler: async (ctx, args) => {
+    const mode = args.mode ?? "xp";
+    const classFilter = args.className?.trim() ?? "";
+
+    let top;
+    if (mode === "rating") {
+      // ranked: urut rating duel (ELO). Skala sekolah → collect + sort aman.
+      const all = await ctx.db.query("studentStats").collect();
+      top = all
+        .filter((s) => (s.duelRating ?? 1000) > 1000 || (s.duelWins ?? 0) + (s.duelLosses ?? 0) > 0)
+        .sort((a, b) => (b.duelRating ?? 1000) - (a.duelRating ?? 1000))
+        .slice(0, 30);
+    } else {
+      top = await ctx.db
+        .query("studentStats")
+        .withIndex("by_xp")
+        .order("desc")
+        .take(100);
+    }
 
     const entries = [];
     for (const s of top) {
-      if (s.xp <= 0) continue;
       const u = await ctx.db.get(s.userId);
       if (!u?.username) continue;
+      if (u.role && u.role !== "student") continue;
+      if (classFilter && (u.className ?? "") !== classFilter) continue;
+      if (mode === "xp" && s.xp <= 0) continue;
       entries.push({
         username: u.username,
         name: u.name ?? u.username,
         className: u.className ?? "",
         avatarEmoji: u.avatarEmoji ?? "🦉",
         xp: s.xp,
+        rating: s.duelRating ?? 1000,
+        duelWins: s.duelWins ?? 0,
+        duelLosses: s.duelLosses ?? 0,
         level: levelFromXp(s.xp),
         rank: rankFromLevel(levelFromXp(s.xp)).name,
         rankEmoji: rankFromLevel(levelFromXp(s.xp)).emoji,
       });
+      if (entries.length >= 30) break;
     }
     return entries;
   },

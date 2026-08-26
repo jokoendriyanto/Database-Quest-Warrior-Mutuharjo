@@ -29,6 +29,87 @@ const TOURNAMENT_WIN_XP = 75;
 const CHAMPION_XP = 150;
 const RUNNER_UP_XP = 50;
 
+/* ------------------------------ PvP rating ------------------------------ */
+
+const ELO_K = 32;
+const DEFAULT_RATING = 1000;
+
+/** ELO-lite: kembalikan delta rating untuk pemain A (pemain B dapat kebalikan). */
+function eloDelta(ratingA: number, ratingB: number, scoreA: number): number {
+  const expected = 1 / (1 + 10 ** ((ratingB - ratingA) / 400));
+  return Math.round(ELO_K * (scoreA - expected));
+}
+
+/**
+ * Catat hasil PvP untuk KEDUA pemain: rating + W/L/D.
+ * Dipanggil sekali saat duel/match selesai (server-side).
+ */
+async function applyPvpResult(
+  ctx: MutationCtx,
+  idA: any,
+  idB: any,
+  winner: "a" | "b" | "draw",
+): Promise<number> {
+  const statsA = await getStats(ctx, idA);
+  const statsB = await getStats(ctx, idB);
+  const ra = statsA.duelRating ?? DEFAULT_RATING;
+  const rb = statsB.duelRating ?? DEFAULT_RATING;
+  const scoreA = winner === "a" ? 1 : winner === "draw" ? 0.5 : 0;
+  const deltaA = eloDelta(ra, rb, scoreA);
+
+  await ctx.db.patch(statsA._id, {
+    duelRating: Math.max(100, ra + deltaA),
+    duelWins: (statsA.duelWins ?? 0) + (winner === "a" ? 1 : 0),
+    duelLosses: (statsA.duelLosses ?? 0) + (winner === "b" ? 1 : 0),
+    duelDraws: (statsA.duelDraws ?? 0) + (winner === "draw" ? 1 : 0),
+  });
+  await ctx.db.patch(statsB._id, {
+    duelRating: Math.max(100, rb - deltaA),
+    duelWins: (statsB.duelWins ?? 0) + (winner === "b" ? 1 : 0),
+    duelLosses: (statsB.duelLosses ?? 0) + (winner === "a" ? 1 : 0),
+    duelDraws: (statsB.duelDraws ?? 0) + (winner === "draw" ? 1 : 0),
+  });
+  return deltaA;
+}
+
+/**
+ * Anti-farming XP duel: duel ke-1 hari ini antar pasangan yang sama dapat
+ * XP penuh, ke-2 setengah, ke-3 dst. tanpa XP (rating tetap berjalan).
+ */
+async function duelXpMultiplier(ctx: MutationCtx, a: any, b: any): Promise<number> {
+  const dayStart = new Date();
+  dayStart.setUTCHours(0, 0, 0, 0);
+  const ts = dayStart.getTime();
+  const asHost = await ctx.db
+    .query("duels")
+    .withIndex("by_host", (q) => q.eq("hostId", a))
+    .collect();
+  const asGuest = await ctx.db
+    .query("duels")
+    .withIndex("by_guest", (q) => q.eq("guestId", b))
+    .collect();
+  const asHostRev = await ctx.db
+    .query("duels")
+    .withIndex("by_host", (q) => q.eq("hostId", b))
+    .collect();
+  const asGuestRev = await ctx.db
+    .query("duels")
+    .withIndex("by_guest", (q) => q.eq("guestId", a))
+    .collect();
+  const between = [
+    ...asHost.filter((d) => d.guestId === b),
+    ...asGuest.filter((d) => d.hostId === a),
+    ...asHostRev.filter((d) => d.guestId === a),
+    ...asGuestRev.filter((d) => d.hostId === b),
+  ].filter(
+    (d) => d.status === "finished" && (d.finishedAt ?? 0) >= ts,
+  );
+  const n = between.length; // jumlah duel selesai hari ini (belum termasuk yang ini)
+  if (n === 0) return 1;
+  if (n === 1) return 0.5;
+  return 0;
+}
+
 function pickExerciseId(): string {
   const pool = battlePool();
   return pool[Math.floor(Math.random() * pool.length)].id;
@@ -197,19 +278,68 @@ export const submitDuel = mutation({
       winnerId: winnerId ?? undefined,
       isDraw: draw,
       status: "finished",
+      finishedAt: Date.now(),
     });
 
+    // rating PvP untuk kedua pemain (sekali, di transaksi penyelesaian)
+    const ratingDelta = await applyPvpResult(
+      ctx,
+      duel.hostId,
+      duel.guestId!,
+      draw ? "draw" : winnerId === duel.hostId ? "a" : "b",
+    );
+
+    // XP dengan anti-farming: hanya pemenang/seri, dikali multiplier harian
+    const mult = await duelXpMultiplier(ctx, duel.hostId, duel.guestId!);
     let xpAwarded = 0;
     if (draw) {
-      xpAwarded = await grantXp(ctx, userId, DUEL_DRAW_XP);
+      xpAwarded = await grantXp(ctx, userId, Math.round(DUEL_DRAW_XP * mult));
     } else if (winnerId === userId) {
-      xpAwarded = await grantXp(ctx, userId, DUEL_WIN_XP);
+      xpAwarded = await grantXp(ctx, userId, Math.round(DUEL_WIN_XP * mult));
       const stats = await getStats(ctx, userId);
       if (!stats.badges.includes("first_duel_win")) {
         await ctx.db.patch(stats._id, { badges: [...stats.badges, "first_duel_win"] });
       }
     }
-    return { resolved: true as const, won: winnerId === userId, draw, xpAwarded };
+    return { resolved: true as const, won: winnerId === userId, draw, xpAwarded, ratingDelta };
+  },
+});
+
+/** Riwayat duel user (untuk profil): lawan, hasil, durasi, challenge. */
+export const myDuelHistory = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) return [];
+    const hosted = await ctx.db
+      .query("duels")
+      .withIndex("by_host", (q) => q.eq("hostId", userId))
+      .collect();
+    const guested = await ctx.db
+      .query("duels")
+      .withIndex("by_guest", (q) => q.eq("guestId", userId))
+      .collect();
+    const finished = [...hosted, ...guested]
+      .filter((d) => d.status === "finished")
+      .sort((a, b) => (b.finishedAt ?? 0) - (a.finishedAt ?? 0))
+      .slice(0, 20);
+
+    const out = [];
+    for (const d of finished) {
+      const oppId = d.hostId === userId ? d.guestId : d.hostId;
+      const opp = oppId ? await ctx.db.get(oppId) : null;
+      const mySub = d.hostId === userId ? d.hostSubmitted : d.guestSubmitted;
+      out.push({
+        opponent: opp?.name ?? opp?.username ?? "Petualang",
+        opponentEmoji: opp?.avatarEmoji ?? "🦉",
+        won: d.winnerId === userId,
+        draw: d.isDraw ?? false,
+        mySeconds: mySub?.seconds ?? null,
+        exerciseTitle: EXERCISE_MAP.get(d.exerciseId)?.title ?? d.exerciseId,
+        at: d.finishedAt ?? d.createdAt,
+      });
+    }
+    return out;
   },
 });
 
@@ -432,6 +562,14 @@ export const submitTournamentMatch = mutation({
 
     const winnerIsMe = m.winner === userId;
     if (winnerIsMe) xpAwarded = await grantXp(ctx, userId, TOURNAMENT_WIN_XP);
+
+    // rating PvP turnamen: setiap match resmi menggerakkan rating kedua pemain
+    await applyPvpResult(
+      ctx,
+      m.playerA!,
+      m.playerB!,
+      m.winner === m.playerA ? "a" : "b",
+    );
 
     if (m.round === t.rounds) {
       // FINAL — turnamen selesai

@@ -11,8 +11,9 @@
  *   UPDATE t SET c = v, ... [WHERE ...]
  *   DELETE FROM t [WHERE ...]
  *
- * Expressions: = != <> > < >= <= AND OR NOT LIKE IN BETWEEN IS NULL,
- * parentheses, COUNT/SUM/AVG/MIN/MAX, column aliases with AS.
+ * Expressions: = != <> > < >= <= AND OR NOT LIKE IN (NOT IN) BETWEEN IS NULL,
+ * EXISTS / NOT EXISTS, parentheses, COUNT/SUM/AVG/MIN/MAX, column aliases with AS.
+ * Subqueries (uncorrelated): scalar `(SELECT ...)`, `IN (SELECT ...)`, `EXISTS (SELECT ...)`.
  */
 
 export class SqlError extends Error {
@@ -93,7 +94,10 @@ type Expr =
   | { kind: "in"; l: Expr; list: Expr[] }
   | { kind: "between"; l: Expr; lo: Expr; hi: Expr }
   | { kind: "isnull"; e: Expr; negated: boolean }
-  | { kind: "agg"; fn: string; arg: Expr | "*" };
+  | { kind: "agg"; fn: string; arg: Expr | "*" }
+  | { kind: "scalarSub"; stmt: SelectStmt }
+  | { kind: "inSelect"; l: Expr; stmt: SelectStmt; negated: boolean }
+  | { kind: "exists"; stmt: SelectStmt; negated: boolean };
 
 /* ----------------------------- Tokenizer ----------------------------- */
 
@@ -101,7 +105,7 @@ const KEYWORDS = new Set([
   "select","distinct","from","where","group","by","order","limit","as",
   "insert","into","values","update","set","delete","join","inner","left",
   "right","on","and","or","not","like","in","between","is","null","asc",
-  "desc","count","sum","avg","min","max",
+  "desc","count","sum","avg","min","max","exists",
 ]);
 
 interface Token {
@@ -193,6 +197,13 @@ class Parser {
     if (!t) throw new SqlError("ER_PARSE", "Query-nya kelihatannya belum selesai. 🤔");
     this.pos++;
     return t;
+  }
+  private peekAt(offset: number): Token | undefined {
+    return this.tokens[this.pos + offset];
+  }
+  private peekIsKw(offset: number, kw: string): boolean {
+    const t = this.peekAt(offset);
+    return !!t && t.type === "kw" && t.value.toLowerCase() === kw;
   }
   private isKw(...kws: string[]): boolean {
     const t = this.peek();
@@ -421,6 +432,13 @@ class Parser {
     return this.parseComparison();
   }
   private parseComparison(): Expr {
+    if (this.isKw("exists")) {
+      this.next();
+      this.expectOp("(");
+      const sub = this.parseSelect();
+      this.expectOp(")");
+      return { kind: "exists", stmt: sub, negated: false };
+    }
     const left = this.parsePrimary();
     const t = this.peek();
     if (t?.type === "op" && ["=", "!=", ">", "<", ">=", "<="].includes(t.value)) {
@@ -434,13 +452,20 @@ class Parser {
       if (p.type !== "str") throw new SqlError("ER_PARSE", "LIKE butuh pola string, contoh: LIKE '%gmail%'");
       return { kind: "like", l: left, pattern: p.value };
     }
-    if (this.isKw("in")) {
-      this.next();
+    if (this.isKw("in") || (this.isKw("not") && this.peekIsKw(1, "in"))) {
+      const negated = this.eatKw("not");
+      this.next(); // IN
       this.expectOp("(");
+      if (this.isKw("select")) {
+        const sub = this.parseSelect();
+        this.expectOp(")");
+        return { kind: "inSelect", l: left, stmt: sub, negated };
+      }
       const list: Expr[] = [];
       do { list.push(this.parsePrimary()); } while (this.eatComma());
       this.expectOp(")");
-      return { kind: "in", l: left, list };
+      const inExpr: Expr = { kind: "in", l: left, list };
+      return negated ? { kind: "not", e: inExpr } : inExpr;
     }
     if (this.isKw("between")) {
       this.next();
@@ -464,6 +489,11 @@ class Parser {
     if (t.type === "kw" && t.value.toLowerCase() === "null") { this.next(); return { kind: "lit", value: null }; }
     if (t.value === "(") {
       this.next();
+      if (this.isKw("select")) {
+        const sub = this.parseSelect();
+        this.expectOp(")");
+        return { kind: "scalarSub", stmt: sub };
+      }
       const e = this.parseExpr();
       this.expectOp(")");
       return e;
@@ -503,10 +533,35 @@ function resolveColumn(row: Row, tablesInRow: string[], name: string): unknown {
   const lower = name.toLowerCase();
   const matchKey = Object.keys(row).find((k) => k.toLowerCase() === lower);
   if (matchKey) return row[matchKey];
-  const qual = lower.includes(".") ? lower : null;
-  if (qual) {
-    const m = Object.keys(row).find((k) => k.toLowerCase() === qual);
-    if (m) return row[m];
+
+  const dot = name.indexOf(".");
+  if (dot > 0) {
+    const tAlias = name.slice(0, dot);
+    const colName = name.slice(dot + 1);
+    // 1) key berkualifikasi persis (baris JOIN: `students.class_id`)
+    const qm = Object.keys(row).find((k) => k.toLowerCase() === lower);
+    if (qm) return row[qm];
+    // 2) ref `tabel.kolom` ke tabel baris ini (subquery satu-tabel)
+    if (tablesInRow.some((t) => t.toLowerCase() === tAlias.toLowerCase()) && colName in row) {
+      return row[colName];
+    }
+    // 3) korelasi: tabel milik query luar (EXISTS/IN berkorelasi)
+    if (outerRowCtx) {
+      const outerTables = (outerRowCtx as { __tables__?: string[] }).__tables__ ?? [];
+      if (
+        outerTables.some((t) => t.toLowerCase() === tAlias.toLowerCase()) &&
+        colName in outerRowCtx
+      ) {
+        return outerRowCtx[colName];
+      }
+      const om = Object.keys(outerRowCtx).find((k) => k.toLowerCase() === lower);
+      if (om) return outerRowCtx[om];
+    }
+  } else if (outerRowCtx) {
+    // korelasi kolom tak-berkualifikasi: inner selalu menang dulu
+    if (name in outerRowCtx) return outerRowCtx[name];
+    const om = Object.keys(outerRowCtx).find((k) => k.toLowerCase() === lower);
+    if (om) return outerRowCtx[om];
   }
   void tablesInRow;
   throw new SqlError(
@@ -550,6 +605,42 @@ function evalExpr(e: Expr, row: Row, tables: string[], aggRows?: Row[]): unknown
     case "in": {
       const v = evalExpr(e.l, row, tables, aggRows);
       return e.list.some((item) => looseEquals(v, evalExpr(item, row, tables, aggRows)));
+    }
+    case "inSelect": {
+      const v = evalExpr(e.l, row, tables, aggRows);
+      const prev = outerRowCtx;
+      outerRowCtx = row;
+      try {
+        const res = runSubSelect(e.stmt);
+        const vals = res.rows.map((r) => Object.values(r)[0]);
+        const found = vals.some((x) => looseEquals(v, x));
+        return e.negated ? !found : found;
+      } finally {
+        outerRowCtx = prev;
+      }
+    }
+    case "scalarSub": {
+      const prev = outerRowCtx;
+      outerRowCtx = row;
+      try {
+        const res = runSubSelect(e.stmt);
+        const r0 = res.rows[0];
+        if (!r0) return null;
+        return Object.values(r0)[0] ?? null;
+      } finally {
+        outerRowCtx = prev;
+      }
+    }
+    case "exists": {
+      const prev = outerRowCtx;
+      outerRowCtx = row;
+      try {
+        const res = runSubSelect(e.stmt);
+        const found = res.rows.length > 0;
+        return e.negated ? !found : found;
+      } finally {
+        outerRowCtx = prev;
+      }
     }
     case "between": {
       const v = evalExpr(e.l, row, tables, aggRows);
@@ -665,13 +756,40 @@ function cloneDb(db: Database): Database {
   return out;
 }
 
+/** DB aktif untuk mengeksekusi subquery — diisi runSql selama satu statement. */
+let subqueryDb: Database | null = null;
+/** Baris query luar — untuk subquery berkorelasi (mis. EXISTS). */
+let outerRowCtx: Row | null = null;
+
+function runSubSelect(stmt: SelectStmt): RunResult {
+  if (!subqueryDb)
+    throw new SqlError("ER_INTERNAL", "Subquery tidak bisa dijalankan di konteks ini.");
+  return execSelect(stmt, subqueryDb);
+}
+
 export function runSql(sql: string, sourceDb: Database): RunResult {
   const trimmed = sql.trim().replace(/;\s*$/, "");
   if (!trimmed) throw new SqlError("ER_EMPTY", "Query-nya masih kosong nih. Tulis sesuatu dulu dong. 😄");
   const stmt = new Parser(tokenize(trimmed)).parseStatement();
 
-  if (stmt.type !== "select") {
-    const db = cloneDb(sourceDb);
+  try {
+    if (stmt.type !== "select") {
+      const db = cloneDb(sourceDb);
+      subqueryDb = db;
+      return execMutation(stmt, db);
+    }
+    subqueryDb = sourceDb;
+    return execSelect(stmt, sourceDb);
+  } finally {
+    subqueryDb = null;
+  }
+}
+
+function execMutation(
+  stmt: InsertStmt | UpdateStmt | DeleteStmt,
+  db: Database,
+): RunResult {
+  {
     const table = db[Object.keys(db).find((k) => k.toLowerCase() === stmt.table.toLowerCase()) ?? ""];
     if (!table)
       throw new SqlError("ER_NO_TABLE", `Tabel \`${stmt.table}\` nggak ada di database ini.`);
@@ -710,7 +828,9 @@ export function runSql(sql: string, sourceDb: Database): RunResult {
     table.rows = table.rows.filter((r) => !matching.includes(r));
     return { kind: "mutation", columns: [], rows: [], affectedRows: matching.length, message: `${matching.length} baris dihapus dari ${table.name}. 🗑️` };
   }
+}
 
+function execSelect(stmt: SelectStmt, sourceDb: Database): RunResult {
   // SELECT
   const base = findTable(sourceDb, stmt.from);
   const baseName = stmt.from.alias ?? stmt.from.name;
