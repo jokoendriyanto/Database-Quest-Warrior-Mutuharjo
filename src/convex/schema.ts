@@ -266,6 +266,33 @@ const schema = defineSchema(
     })
       .index("by_week_user", ["weekKey", "userId"])
       .index("by_user", ["userId"]),
+
+    /* --------------- Classroom Mode ------------------ */
+    classroomSessions: defineTable({
+      teacherId: v.id("users"),
+      className: v.string(),
+      code: v.string(), // kode join 4 huruf
+      exerciseId: v.string(),
+      status: v.union(
+        v.literal("waiting"),
+        v.literal("active"),
+        v.literal("finished"),
+      ),
+      participants: v.array(v.id("users")),
+      results: v.array(
+        v.object({
+          userId: v.id("users"),
+          correct: v.boolean(),
+          elapsedMs: v.number(),
+          xpEarned: v.number(),
+        }),
+      ),
+      createdAt: v.number(),
+      startedAt: v.optional(v.number()),
+      finishedAt: v.optional(v.number()),
+    })
+      .index("by_code", ["code"])
+      .index("by_teacher", ["teacherId"]),
   },
   {
     schemaValidation: false,

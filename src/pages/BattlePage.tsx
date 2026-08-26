@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import DuelArena from "@/components/DuelArena";
 import TournamentArena from "@/components/TournamentArena";
 import WeeklyBossArena from "@/components/WeeklyBossArena";
+import ClassroomMode from "@/components/ClassroomMode";
 import { cn } from "@/lib/utils";
 
 type Phase = "home" | "countdown" | "fight" | "result";
@@ -176,6 +177,9 @@ export default function BattlePage() {
             ))}
           </ul>
         </section>
+
+        {/* CLASSROOM MODE — sesi kelas */}
+        {data && <ClassroomMode role={data.user.role} />}
 
         {/* WEEKLY BOSS — challenge mingguan */}
         <WeeklyBossArena />
