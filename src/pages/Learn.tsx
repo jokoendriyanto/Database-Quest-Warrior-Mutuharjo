@@ -34,14 +34,16 @@ export default function Learn() {
     const complete = total > 0 && worldDone === total;
     let status: WorldStatus;
     if (w.comingSoon || total === 0) status = "soon";
-    else if (complete && done.size > 0 && worldDone === total) {
-      // mastered kalau ini world aktif tertinggi yang sudah tuntas & tidak ada world berikutnya yang bisa dibuka... sederhanakan: completed
+    else if (complete) {
+      // semua lesson di world ini tamat
       status = "completed";
     } else if (!prevComplete) status = "locked";
     else if (worldDone > 0 && worldDone < total) status = "current";
-    else if (worldDone === 0 && complete === false && prevComplete) {
+    else if (worldDone === 0 && prevComplete) {
+      // world pertama langsung jadi target aktif saat belum ada progres
       status = done.size === 0 && w.num === 1 ? "current" : "available";
     } else status = "available";
+    // world kosong (segera hadir) tidak mengubah rantai unlock
     prevComplete = complete && total > 0 ? true : total === 0 ? prevComplete : false;
 
     return { world: w, status, worldDone, total };
