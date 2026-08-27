@@ -174,7 +174,7 @@ export function SqlPlayground({
   db: SqlDatabase;
   onSolved?: () => void;
 }) {
-  const [sql, setSql] = useState(exercise.starter);
+  const [sql, setSql] = useState("");
   const [result, setResult] = useState<RunResult | null>(null);
   const [error, setError] = useState<{ message: string; suggestion?: string } | null>(null);
   const [elapsedMs, setElapsedMs] = useState<number | null>(null);
@@ -332,8 +332,8 @@ export function SqlPlayground({
         <Button
           size="sm"
           variant="ghost"
-          onClick={() => setSql(exercise.starter)}
-          disabled={sql === exercise.starter}
+          onClick={() => setSql("")}
+          disabled={sql === ""}
         >
           <RotateCcw className="size-3.5" /> Reset
         </Button>

@@ -76,7 +76,7 @@ interface Props {
 
 export function SqlSandboxInline({ initialCode, db, caption, hint }: Props) {
   const [expanded, setExpanded] = useState(false);
-  const [sql, setSql] = useState(initialCode);
+  const [sql, setSql] = useState("");
   const [result, setResult] = useState<RunResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [elapsedMs, setElapsedMs] = useState<number | null>(null);
@@ -104,7 +104,7 @@ export function SqlSandboxInline({ initialCode, db, caption, hint }: Props) {
   };
 
   const handleReset = () => {
-    setSql(initialCode);
+    setSql("");
     setResult(null);
     setError(null);
     setElapsedMs(null);
