@@ -64,6 +64,13 @@ export default function TeacherPage() {
     [q],
   );
 
+  // kolom matrix = world yang punya data attempt di kelas ini
+  const matrixWorlds = useMemo(() => {
+    const set = new Set<number>();
+    for (const s of students) for (const w of s.worldSkills ?? []) set.add(w.worldNum);
+    return [...set].sort((a, b) => a - b);
+  }, [students]);
+
   if (!q) {
     return (
       <div className="mx-auto max-w-6xl space-y-3" aria-busy>
@@ -97,13 +104,6 @@ export default function TeacherPage() {
       : 0;
   const needAttention = students.filter((s) => s.atRisk || s.daysInactive > 7).length;
   const inactiveStudents = students.filter((s) => s.daysInactive > 7);
-
-  // kolom matrix = world yang punya data attempt di kelas ini
-  const matrixWorlds = useMemo(() => {
-    const set = new Set<number>();
-    for (const s of students) for (const w of s.worldSkills ?? []) set.add(w.worldNum);
-    return [...set].sort((a, b) => a - b);
-  }, [students]);
 
   const exportCsv = () => {
     const header = ["Nama", "Username", "Kelas", "Level", "XP", "Lesson", "Latihan", "Benar", "Accuracy %", "Hari tidak aktif", "Status"];
