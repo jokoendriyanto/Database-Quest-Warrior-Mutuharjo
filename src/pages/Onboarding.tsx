@@ -219,9 +219,9 @@ SELECT * FROM journey WHERE student = '${firstName.toLowerCase()}';`}
               <p className="mt-2 rounded border border-destructive/40 bg-destructive/10 px-2 py-1 text-xs text-destructive">{tutorialError}</p>
             )}
             {tutorialResult && (
-              <div className="mt-2 rounded-md border border-success/40 bg-success/10 p-3">
+              <div className="mt-2 overflow-hidden rounded-md border border-success/40 bg-success/10 p-3">
                 <p className="text-sm font-bold text-success">✓ Benar! Query-mu jalan.</p>
-                <pre className="mt-1 font-mono text-xs text-muted-foreground">{JSON.stringify(tutorialResult.rows)}</pre>
+                <pre className="mt-1 max-w-full overflow-x-auto whitespace-pre-wrap break-all font-mono text-xs text-muted-foreground">{JSON.stringify(tutorialResult.rows, null, 2)}</pre>
               </div>
             )}
 
