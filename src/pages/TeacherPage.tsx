@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { Link } from "react-router";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Download } from "lucide-react";
+import { Id } from "@/convex/_generated/dataModel";
+import { Download, Pencil, Trash2, CheckSquare, Square, X, ArrowRight } from "lucide-react";
 import { getExercise } from "@/lib/curriculum";
 import { WORLD_SKILL } from "@/lib/game";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ const TABS: { key: Tab; label: string }[] = [
 ];
 
 type Student = {
+  userId: string;
   name: string;
   username: string;
   className: string;
@@ -55,9 +57,219 @@ function cellCls(v: number): string {
   return "text-warning font-semibold";
 }
 
+/* ======================== EDIT MODAL ======================== */
+
+function EditStudentModal({
+  student,
+  classOptions,
+  onClose,
+  onSave,
+}: {
+  student: Student;
+  classOptions: string[];
+  onClose: () => void;
+  onSave: (data: { userId: string; name?: string; className?: string }) => void;
+}) {
+  const [name, setName] = useState(student.name);
+  const [className, setClassName] = useState(student.className);
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    await onSave({ userId: student.userId, name, className });
+    setSaving(false);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-2xl">
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-lg font-bold flex items-center gap-2">
+            <span className="text-2xl">{student.avatarEmoji}</span>
+            Edit Siswa
+          </h3>
+          <button onClick={onClose} className="rounded-md p-1 hover:bg-muted transition-colors">
+            <X className="size-4" />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block font-mono text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">
+              Username
+            </label>
+            <input
+              disabled
+              value={student.username}
+              className="w-full rounded-md border border-border bg-muted/50 px-3 py-2 text-sm font-mono text-muted-foreground cursor-not-allowed"
+            />
+          </div>
+
+          <div>
+            <label className="block font-mono text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">
+              Nama Lengkap *
+            </label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              placeholder="Nama siswa"
+            />
+          </div>
+
+          <div>
+            <label className="block font-mono text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">
+              Kelas
+            </label>
+            <select
+              value={className}
+              onChange={(e) => setClassName(e.target.value)}
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+            >
+              <option value="">— Tanpa Kelas —</option>
+              {classOptions.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3 pt-1">
+            <div className="text-center">
+              <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Level</p>
+              <p className="text-lg font-bold">{student.level}</p>
+            </div>
+            <div className="text-center">
+              <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">XP</p>
+              <p className="text-lg font-bold">{student.xp.toLocaleString()}</p>
+            </div>
+            <div className="text-center">
+              <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Accuracy</p>
+              <p className={cn("text-lg font-bold", cellCls(student.accuracy))}>{student.accuracy}%</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-2 mt-6">
+          <Button variant="secondary" onClick={onClose} className="flex-1">
+            Batal
+          </Button>
+          <Button onClick={handleSave} disabled={saving || !name.trim()} className="flex-1">
+            {saving ? "Menyimpan..." : "Simpan Perubahan"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ======================== MASS EDIT BAR ======================== */
+
+function MassEditBar({
+  count,
+  classOptions,
+  onMoveClass,
+  onDelete,
+  onClearSelection,
+}: {
+  count: number;
+  classOptions: string[];
+  onMoveClass: (cls: string) => void;
+  onDelete: () => void;
+  onClearSelection: () => void;
+}) {
+  const [targetClass, setTargetClass] = useState("");
+
+  return (
+    <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-in fade-in slide-in-from-bottom-4">
+      <div className="flex items-center gap-3 rounded-xl border border-primary/30 bg-card px-5 py-3 shadow-2xl">
+        <span className="text-sm font-semibold text-primary">{count} dipilih</span>
+
+        <div className="h-5 w-px bg-border" />
+
+        <div className="flex items-center gap-2">
+          <select
+            value={targetClass}
+            onChange={(e) => setTargetClass(e.target.value)}
+            className="rounded-md border border-border bg-background px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary/50"
+          >
+            <option value="">Pindah kelas...</option>
+            {classOptions.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+          <Button
+            size="sm"
+            disabled={!targetClass}
+            onClick={() => { onMoveClass(targetClass); setTargetClass(""); }}
+          >
+            <ArrowRight className="size-3 mr-1" />
+            Pindahkan
+          </Button>
+        </div>
+
+        <div className="h-5 w-px bg-border" />
+
+        <Button size="sm" variant="destructive" onClick={onDelete}>
+          <Trash2 className="size-3 mr-1" />
+          Hapus
+        </Button>
+
+        <button onClick={onClearSelection} className="ml-1 rounded-md p-1 hover:bg-muted transition-colors">
+          <X className="size-3.5 text-muted-foreground" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ======================== CONFIRM MODAL ======================== */
+
+function ConfirmModal({
+  title,
+  message,
+  confirmLabel,
+  variant = "destructive",
+  onConfirm,
+  onCancel,
+}: {
+  title: string;
+  message: string;
+  confirmLabel: string;
+  variant?: "default" | "destructive";
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-2xl">
+        <h3 className="text-lg font-bold mb-2">{title}</h3>
+        <p className="text-sm text-muted-foreground mb-5">{message}</p>
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={onCancel} className="flex-1">Batal</Button>
+          <Button
+            variant={variant === "destructive" ? "destructive" : "default"}
+            onClick={onConfirm}
+            className="flex-1"
+          >
+            {confirmLabel}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ======================== MAIN ======================== */
+
 export default function TeacherPage() {
   const q = useQuery(api.game.teacherOverview);
+  const classOpts = useQuery(api.teacher.classOptions);
   const [tab, setTab] = useState<Tab>("siswa");
+
+  const editStudent = useMutation(api.teacher.editStudent);
+  const massEditClass = useMutation(api.teacher.massEditClass);
+  const massDeleteStudents = useMutation(api.teacher.massDeleteStudents);
 
   const students = useMemo(
     () => (q && !q.denied ? [...q.students].sort((a, b) => b.xp - a.xp) : []),
@@ -70,6 +282,72 @@ export default function TeacherPage() {
     for (const s of students) for (const w of s.worldSkills ?? []) set.add(w.worldNum);
     return [...set].sort((a, b) => a - b);
   }, [students]);
+
+  const classOptions = useMemo(() => classOpts ?? [], [classOpts]);
+
+  // ---- selection state ----
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const toggleSelect = useCallback((userId: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(userId)) next.delete(userId);
+      else next.add(userId);
+      return next;
+    });
+  }, []);
+  const toggleAll = useCallback(() => {
+    setSelected((prev) => {
+      if (prev.size === students.length) return new Set();
+      return new Set(students.map((s) => s.userId));
+    });
+  }, [students]);
+  const clearSelection = useCallback(() => setSelected(new Set()), []);
+
+  // ---- edit modal state ----
+  const [editing, setEditing] = useState<Student | null>(null);
+
+  // ---- confirm modal state ----
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmMassDelete, setConfirmMassDelete] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  // ---- handlers ----
+  const handleSaveSingle = async (data: { userId: string; name?: string; className?: string }) => {
+    try {
+      await editStudent({ ...data, userId: data.userId as Id<"users"> });
+      showToast("✅ Data siswa berhasil diupdate!");
+    } catch (err: any) {
+      showToast(`❌ ${err.message}`);
+    }
+  };
+
+  const handleMassMoveClass = async (cls: string) => {
+    try {
+      const ids = [...selected] as Id<"users">[];
+      await massEditClass({ userIds: ids, className: cls });
+      showToast(`✅ ${ids.length} siswa dipindahkan ke "${cls}"`);
+      clearSelection();
+    } catch (err: any) {
+      showToast(`❌ ${err.message}`);
+    }
+  };
+
+  const handleMassDelete = async () => {
+    try {
+      const ids = [...selected] as Id<"users">[];
+      await massDeleteStudents({ userIds: ids });
+      showToast(`🗑️ ${ids.length} siswa berhasil direset.`);
+      clearSelection();
+      setConfirmMassDelete(false);
+    } catch (err: any) {
+      showToast(`❌ ${err.message}`);
+    }
+  };
 
   if (!q) {
     return (
@@ -135,8 +413,18 @@ export default function TeacherPage() {
     URL.revokeObjectURL(url);
   };
 
+  const allSelected = students.length > 0 && selected.size === students.length;
+  const someSelected = selected.size > 0 && selected.size < students.length;
+
   return (
     <div className="mx-auto max-w-[1200px] space-y-10">
+      {/* ---------- TOAST ---------- */}
+      {toast && (
+        <div className="fixed top-4 right-4 z-[70] rounded-lg border border-border bg-card px-4 py-3 shadow-xl text-sm font-medium animate-in fade-in slide-in-from-right-4">
+          {toast}
+        </div>
+      )}
+
       {/* ---------- HEADER ---------- */}
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -159,7 +447,7 @@ export default function TeacherPage() {
           <button
             key={t.key}
             type="button"
-            onClick={() => setTab(t.key)}
+            onClick={() => { setTab(t.key); clearSelection(); }}
             className={cn(
               "-mb-px border-b-2 px-3 py-2 font-mono text-[11px] font-semibold uppercase tracking-wider transition-colors",
               tab === t.key
@@ -215,8 +503,7 @@ export default function TeacherPage() {
                         `${inactiveStudents.length} tidak aktif >7 hari`}
                       {inactiveStudents.length > 0 && needAttention !== inactiveStudents.length && " · "}
                       {students.filter((s) => s.atRisk).length > 0 &&
-                        `${students.filter((s) => s.atRisk).length} accuracy rendah`}
-                      .
+                        `${students.filter((s) => s.atRisk).length} accuracy rendah`}.
                     </p>
                     <Link to="/battle" className="mt-2 inline-block text-sm text-battle hover:underline">
                       Tugaskan latihan VS Bot →
@@ -250,11 +537,31 @@ export default function TeacherPage() {
 
           {/* ---------- CLASS TABLE ---------- */}
           <section aria-labelledby="table-h">
-            <h2 id="table-h" className="kicker mb-3">DAFTAR SISWA</h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 id="table-h" className="kicker">DAFTAR SISWA</h2>
+              {selected.size > 0 && (
+                <span className="text-xs text-primary font-semibold">
+                  {selected.size} dipilih
+                </span>
+              )}
+            </div>
             <div className="overflow-x-auto rounded-lg border border-border">
-              <table className="w-full min-w-[720px] text-left text-sm">
+              <table className="w-full min-w-[820px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-border bg-sidebar font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                    <th className="px-3 py-2 font-medium w-10">
+                      <button onClick={toggleAll} className="flex items-center justify-center">
+                        {allSelected ? (
+                          <CheckSquare className="size-4 text-primary" />
+                        ) : someSelected ? (
+                          <div className="size-4 rounded border-2 border-primary bg-primary/20 flex items-center justify-center">
+                            <div className="size-2 rounded-sm bg-primary" />
+                          </div>
+                        ) : (
+                          <Square className="size-4 text-muted-foreground" />
+                        )}
+                      </button>
+                    </th>
                     <th className="px-3 py-2 font-medium">Siswa</th>
                     <th className="px-3 py-2 font-medium">Kelas</th>
                     <th className="px-3 py-2 text-right font-medium">LV</th>
@@ -263,16 +570,34 @@ export default function TeacherPage() {
                     <th className="px-3 py-2 text-right font-medium">Acc</th>
                     <th className="px-3 py-2 text-right font-medium">Last Active</th>
                     <th className="px-3 py-2 font-medium">Status</th>
+                    <th className="px-3 py-2 font-medium w-16">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
                   {students.map((s) => {
                     const st = statusOf(s);
+                    const isChecked = selected.has(s.userId);
                     return (
-                      <tr key={s.username} className="border-b border-border/50 last:border-0 hover:bg-secondary/40">
+                      <tr
+                        key={s.userId}
+                        className={cn(
+                          "border-b border-border/50 last:border-0 hover:bg-secondary/40 transition-colors",
+                          isChecked && "bg-primary/5",
+                        )}
+                      >
+                        <td className="px-3 py-2">
+                          <button onClick={() => toggleSelect(s.userId)} className="flex items-center justify-center">
+                            {isChecked ? (
+                              <CheckSquare className="size-4 text-primary" />
+                            ) : (
+                              <Square className="size-4 text-muted-foreground hover:text-foreground" />
+                            )}
+                          </button>
+                        </td>
                         <td className="px-3 py-2">
                           <span aria-hidden className="mr-1.5">{s.avatarEmoji}</span>
                           <span className="font-medium">{s.name}</span>
+                          <span className="ml-2 text-[10px] text-muted-foreground font-mono">@{s.username}</span>
                         </td>
                         <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{s.className || "—"}</td>
                         <td className="px-3 py-2 text-right font-mono tabular-nums">{s.level}</td>
@@ -286,6 +611,15 @@ export default function TeacherPage() {
                         </td>
                         <td className={cn("px-3 py-2 font-mono text-[10px] tracking-wide", st.cls)}>
                           {st.label}
+                        </td>
+                        <td className="px-3 py-2">
+                          <button
+                            onClick={() => setEditing(s)}
+                            className="rounded-md p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                            title="Edit siswa"
+                          >
+                            <Pencil className="size-3.5" />
+                          </button>
                         </td>
                       </tr>
                     );
@@ -319,7 +653,7 @@ export default function TeacherPage() {
                       .filter((s) => (s.worldSkills?.length ?? 0) > 0)
                       .slice(0, 15)
                       .map((s) => (
-                        <tr key={s.username} className="border-b border-border/50 last:border-0">
+                        <tr key={s.userId} className="border-b border-border/50 last:border-0">
                           <td className="whitespace-nowrap px-3 py-1.5 font-medium">{s.name.split(" ")[0]}</td>
                           {matrixWorlds.map((w) => {
                             const cell = (s.worldSkills ?? []).find((x) => x.worldNum === w);
@@ -341,7 +675,39 @@ export default function TeacherPage() {
           )}
         </>
       )}
-      </>
+      </>)}
+
+      {/* ---------- EDIT MODAL ---------- */}
+      {editing && (
+        <EditStudentModal
+          student={editing}
+          classOptions={classOptions}
+          onClose={() => setEditing(null)}
+          onSave={handleSaveSingle}
+        />
+      )}
+
+      {/* ---------- MASS EDIT BAR ---------- */}
+      {selected.size > 0 && tab === "siswa" && (
+        <MassEditBar
+          count={selected.size}
+          classOptions={classOptions}
+          onMoveClass={handleMassMoveClass}
+          onDelete={() => setConfirmMassDelete(true)}
+          onClearSelection={clearSelection}
+        />
+      )}
+
+      {/* ---------- CONFIRM MASS DELETE ---------- */}
+      {confirmMassDelete && (
+        <ConfirmModal
+          title="Reset Siswa?"
+          message={`Ini akan menghapus data gamifikasi (${selected.size} siswa) dan mereset profil mereka. Siswa harus daftar ulang. Tindakan ini tidak bisa dibatalkan.`}
+          confirmLabel="Ya, Reset"
+          variant="destructive"
+          onConfirm={handleMassDelete}
+          onCancel={() => setConfirmMassDelete(false)}
+        />
       )}
     </div>
   );
