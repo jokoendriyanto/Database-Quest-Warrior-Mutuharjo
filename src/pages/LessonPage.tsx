@@ -14,6 +14,8 @@ import {
 import type { Database as SqlDatabase } from "@/lib/sql/engine";
 import { Button } from "@/components/ui/button";
 import { SqlPlayground } from "@/components/SqlPlayground";
+import { SqlSandboxInline } from "@/components/SqlSandboxInline";
+import { schoolDb, kantinDb } from "@/lib/data/datasets";
 import { cn } from "@/lib/utils";
 
 /* --------------------------- block renderer ----------------------------- */
@@ -48,6 +50,15 @@ function BlockRenderer({
             </figcaption>
           )}
         </figure>
+      );
+    case "sqlSandbox":
+      return (
+        <SqlSandboxInline
+          initialCode={block.code}
+          db={block.dataset === "school" ? schoolDb : kantinDb}
+          caption={block.caption}
+          hint={block.hint}
+        />
       );
     case "callout": {
       const tone =

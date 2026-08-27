@@ -9,6 +9,7 @@ export type LessonBlock =
   | { type: "heading"; text: string }
   | { type: "text"; text: string }
   | { type: "code"; code: string; caption?: string }
+  | { type: "sqlSandbox"; code: string; caption?: string; dataset: "school" | "kantin"; hint?: string }
   | { type: "callout"; text: string; tone: "info" | "warn" | "fun" }
   | { type: "analogy"; title: string; text: string }
   | { type: "buatApa"; text: string }
@@ -698,6 +699,7 @@ export const WORLDS: World[] = [
         { type: "heading", text: "Bangun rumahnya dulu 🏗️" },
         { type: "text", text: "Sebelum simpan data, kita siapkan tempatnya. CREATE DATABASE membuat 'lemari'-nya, CREATE TABLE membuat 'lacinya'." },
         { type: "code", code: "CREATE DATABASE sekolah;\n\nCREATE TABLE students (\n  id INT PRIMARY KEY,\n  name VARCHAR(100),\n  email VARCHAR(150)\n);", caption: "Tabel dimulai dari nama kolom + tipe data" },
+        { type: "sqlSandbox", code: "SELECT *\nFROM students;", dataset: "school", caption: "Lihat semua data siswa di tabel students", hint: "SELECT * FROM nama_tabel;" },
         { type: "callout", text: "PRIMARY KEY di kolom id artinya: setiap baris WAJIB punya id yang beda. Duplikat? MySQL bakal marah. Itu fitur, bukan bug. 😄", tone: "info" },
         { type: "quiz", question: "Apa fungsi VARCHAR(100)?", options: ["Angka maksimal 100", "Teks sampai 100 karakter", "Tanggal", "Nilai benar/salah"], answer: 1, explain: "VARCHAR(n) = teks variabel dengan panjang maksimal n karakter." },
       ]),
@@ -730,6 +732,7 @@ export const WORLDS: World[] = [
           },
           { type: "text", text: "Database sekolah bisa punya ribuan data siswa. Masa kita buka satu-satu? Bisa lulus duluan sebelum selesai. 😭 Nah, SELECT tugasnya mengambil data yang kita butuhkan." },
           { type: "code", code: "SELECT * FROM students;", caption: "* dibaca 'semua kolom'" },
+          { type: "sqlSandbox", code: "SELECT *\nFROM students;", dataset: "school", caption: "Coba sekarang — ambil semua data siswa!", hint: "Cukup ketik SELECT * FROM students; lalu tekan Run SQL" },
           { type: "text", text: "Bacanya: SELECT → ambil, * → semua kolom, FROM → dari, students → tabel students. Artinya: 'Ambil semua data dari tabel students.'" },
           { type: "callout", text: "Sekarang giliran kamu — buka latihan di bawah dan jalankan query pertamamu!", tone: "fun" },
         ],
@@ -739,6 +742,7 @@ export const WORLDS: World[] = [
         { type: "heading", text: "Nggak semua data perlu ditampilkan ✂️" },
         { type: "text", text: "SELECT * itu enak buat eksplorasi, tapi di aplikasi sungguhan kita jarang menampilkan semuanya. Mau daftar kontak? Cukup name dan email." },
         { type: "code", code: "SELECT name, email\nFROM students;", caption: "Kolom dipisah koma, urutan bebas" },
+        { type: "sqlSandbox", code: "SELECT name, email\nFROM students;", dataset: "school", caption: "Coba ambil hanya name dan email", hint: "SELECT kolom1, kolom2 FROM nama_tabel;" },
         { type: "text", text: "Hasilnya tabel baru yang cuma berisi dua kolom itu. Rapi, ringan, jelas." },
       ], ["w3-select-cols"]),
     ],
@@ -763,6 +767,7 @@ export const WORLDS: World[] = [
         },
         { type: "text", text: "Ambil semua data itu gampang. Seni sebenarnya adalah ambil SEBAGIAN data yang relevan. Di sinilah WHERE masuk." },
           { type: "code", code: "SELECT * FROM students\nWHERE class_id = 3;", caption: "Hanya siswa dengan class_id 3 (XI PPLG 1)" },
+          { type: "sqlSandbox", code: "SELECT * FROM students\nWHERE class_id = 3;", dataset: "school", caption: "Filter siswa XI PPLG 1", hint: "WHERE class_id = 3" },
           { type: "text", text: "Operator pembanding yang tersedia: = != > < >= <=. Dan bisa digabung: AND (dua-duanya harus benar), OR (salah satu cukup)." },
           { type: "callout", text: "Satu tanda '=' sudah berarti 'sama dengan' di SQL. Bukan '==', bukan ':='. Santai aja. 😌", tone: "info" },
         ],
@@ -788,12 +793,14 @@ export const WORLDS: World[] = [
         { type: "heading", text: "Juara kelas itu cuma soal urutan 🏆" },
         { type: "text", text: "Data mentah itu acak-acakan. ORDER BY menyusunnya; ASC menaik (default), DESC menurun. LIMIT memangkas hasil — 'kasih aku 5 teratas aja'." },
         { type: "code", code: "SELECT * FROM scores\nORDER BY score DESC\nLIMIT 5;", caption: "5 nilai tertinggi, terurut dari juara" },
+        { type: "sqlSandbox", code: "SELECT * FROM scores\nORDER BY score DESC\nLIMIT 5;", dataset: "school", caption: "Coba lihat 5 nilai tertinggi", hint: "ORDER BY score DESC LIMIT 5" },
         { type: "callout", text: "Perhatikan urutan penulisannya: WHERE dulu (kalau ada), baru ORDER BY, paling akhir LIMIT.", tone: "info" },
       ], ["w5-top5"]),
       lesson("w5-l2", "DISTINCT", 4, [
         { type: "heading", text: "Buang yang kembar 👯" },
         { type: "text", text: "Mau tahu kelas apa saja yang ada tanpa melihat daftar siswa berulang? DISTINCT membuang hasil duplikat." },
         { type: "code", code: "SELECT DISTINCT class_id FROM students;" },
+        { type: "sqlSandbox", code: "SELECT DISTINCT class_id\nFROM students;", dataset: "school", caption: "Lihat kelas unik saja tanpa duplikat", hint: "DISTINCT ditaruh setelah SELECT" },
       ], ["w5-distinct-class"]),
     ],
   },
@@ -809,6 +816,7 @@ export const WORLDS: World[] = [
         { type: "heading", text: "Siswa baru datang! 🎒" },
         { type: "text", text: "Menambah data = INSERT INTO. Sebutkan kolomnya, isi VALUES-nya. String pakai kutip tunggal, angka polos." },
         { type: "code", code: "INSERT INTO students (name, class_id, email, gender)\nVALUES ('Sinta Maharani', 3, 'sinta.m@sch.id', 'P');" },
+        { type: "sqlSandbox", code: "SELECT * FROM students;", dataset: "school", caption: "Lihat data siswa sebelum di-INSERT", hint: "SELECT * FROM students; untuk melihat data saat ini" },
         { type: "callout", text: "Sebutkan kolom secara eksplisit — lebih aman daripada mengandalkan urutan kolom tabel.", tone: "info" },
       ], ["w6-insert"]),
       lesson("w6-l2", "UPDATE & DELETE (Aman!) ", 6, [
@@ -816,6 +824,7 @@ export const WORLDS: World[] = [
         { type: "text", text: "UPDATE mengubah, DELETE menghapus. Keduanya punya musib klasik: LUPA WHERE. Tanpa WHERE, semua baris kena." },
         { type: "analogy", title: "Kebiasaan Emas 💡", text: "Sebelum UPDATE/DELETE, jalankan SELECT dengan WHERE yang sama. Lihat baris mana yang akan kena. Sudah yakin? Baru eksekusi. Ini kebiasaan programmer profesional, bukan opsional." },
         { type: "code", code: "-- 1. Cek dulu\nSELECT * FROM students WHERE id = 3;\n-- 2. Baru ubah\nUPDATE students SET email = 'baru@sch.id' WHERE id = 3;" },
+        { type: "sqlSandbox", code: "SELECT * FROM students\nWHERE id = 3;", dataset: "school", caption: "Cek dulu siswa dengan id 3 sebelum UPDATE", hint: "SELECT * FROM students WHERE id = 3;" },
       ], ["w6-update-email", "w6-delete-low"]),
     ],
   },
@@ -856,12 +865,14 @@ export const WORLDS: World[] = [
         },
         { type: "text", text: "Data sering tersebar di beberapa tabel (itu bagus!). JOIN menyatukannya saat dibutuhkan. INNER JOIN hanya mengambil baris yang PUNYA pasangan di kedua sisi." },
         { type: "code", code: "SELECT students.name, classes.name AS class_name\nFROM students\nINNER JOIN classes\n  ON students.class_id = classes.id;" },
+        { type: "sqlSandbox", code: "SELECT students.name, classes.name AS class_name\nFROM students\nINNER JOIN classes\n  ON students.class_id = classes.id;", dataset: "school", caption: "Gabungkan siswa dengan nama kelasnya", hint: "INNER JOIN ... ON students.class_id = classes.id" },
         { type: "callout", text: "Saat dua tabel punya kolom bernama sama (misal 'name'), kasih alias AS biar hasilnya jelas.", tone: "info" },
       ], ["w8-join-basic"]),
       lesson("w8-l2", "LEFT JOIN & NULL", 7, [
         { type: "heading", text: "Yang penting kiri tetap ada ⬅️" },
         { type: "text", text: "LEFT JOIN menjaga SEMUA baris tabel kiri, meski di kanan tidak ada pasangan — kolom kanannya jadi NULL. Jurus favorit untuk mencari 'data yang TIDAK punya relasi'." },
         { type: "code", code: "SELECT students.name\nFROM students\nLEFT JOIN scores ON students.id = scores.student_id\nWHERE scores.score IS NULL;" },
+        { type: "sqlSandbox", code: "SELECT students.name\nFROM students\nLEFT JOIN scores ON students.id = scores.student_id\nWHERE scores.score IS NULL;", dataset: "school", caption: "Cari siswa yang belum punya nilai", hint: "LEFT JOIN + WHERE ... IS NULL" },
       ], ["w8-left-join-null"]),
     ],
   },
@@ -885,11 +896,13 @@ export const WORLDS: World[] = [
           text: "SELECT * oke untuk latihan. Untuk production, ambil kolom yang memang dibutuhkan — lebih cepat dan hasilnya gampang dibaca.",
         },
         { type: "code", code: "SELECT class_id, COUNT(*) AS total\nFROM students\nGROUP BY class_id;" },
+        { type: "sqlSandbox", code: "SELECT class_id, COUNT(*) AS total\nFROM students\nGROUP BY class_id;", dataset: "school", caption: "Hitung jumlah siswa per kelas", hint: "GROUP BY class_id" },
       ], ["w9-count-per-class"]),
       lesson("w9-l2", "SUM, AVG, MIN, MAX", 6, [
         { type: "heading", text: "Statistik instan 🧮" },
         { type: "text", text: "SUM menjumlah, AVG merata-ratakan, MIN/MAX mencari ekstrem. Semua bekerja per grup kalau ada GROUP BY." },
         { type: "code", code: "SELECT subject_id,\n       AVG(score) AS rata_rata,\n       MAX(score) AS tertinggi\nFROM scores\nGROUP BY subject_id;" },
+        { type: "sqlSandbox", code: "SELECT subject_id,\n       AVG(score) AS rata_rata,\n       MAX(score) AS tertinggi\nFROM scores\nGROUP BY subject_id;", dataset: "school", caption: "Rata-rata & nilai tertinggi per mapel", hint: "AVG() dan MAX() dengan GROUP BY" },
       ], ["w9-avg-subject"]),
       lesson("w9-l3", "Case Kantin: Boss Challenge", 8, [
         { type: "heading", text: "Bu Kantin butuh jawaban 🍜" },
