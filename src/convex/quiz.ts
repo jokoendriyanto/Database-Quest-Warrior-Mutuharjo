@@ -2,6 +2,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { QUIZ_BANK } from "../lib/quizBank";
+import { findStats, grantBadge } from "./gameState";
 
 /**
  * CEK PEMAHAMAN anti-cheat:
@@ -145,7 +146,6 @@ export const submitQuiz = mutation({
     await ctx.db.patch(sessionId, { status: passed ? "passed" : "failed" });
 
     // Badge checks
-    const { findStats, grantBadge } = await import("./gameState");
     const stats = await findStats(ctx, userId);
     const newBadges: string[] = [];
     if (passed && score === total) {
