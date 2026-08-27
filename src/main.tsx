@@ -1,5 +1,6 @@
 import '@vly-ai/integrations';
 import { Toaster } from "@/components/ui/sonner";
+import { useAntiCheat } from "./hooks/useAntiCheat";
 import { RequireAuth } from "@/components/RequireAuth";
 import { AppShell } from "@/components/AppShell";
 import { VlyToolbar } from "../vly-toolbar-readonly.tsx";
@@ -127,6 +128,12 @@ function RouteSyncer() {
   return null;
 }
 
+/** Activates anti-cheat protection across the entire platform */
+function AntiCheatGuard() {
+  useAntiCheat();
+  return null;
+}
+
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -136,6 +143,7 @@ createRoot(document.getElementById("root")!).render(
       </ToolbarErrorBoundary>
       <ConvexAuthProvider client={convex}>
         <BrowserRouter>
+          <AntiCheatGuard />
           <RouteSyncer />
           <Suspense fallback={<RouteLoading />}>
             <Routes>
