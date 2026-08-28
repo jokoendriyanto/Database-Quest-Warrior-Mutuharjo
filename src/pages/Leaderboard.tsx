@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { DatabaseLoadingAnimation } from "@/components/ui/lottie-animation";
 
 type Tab = "global" | "class" | "ranked";
 type Semester = "active" | "s1" | "s2" | "all";
@@ -50,12 +51,7 @@ export default function Leaderboard() {
 
   if (!board || !dash) {
     return (
-      <div className="mx-auto max-w-3xl space-y-2" aria-busy>
-        <div className="h-8 w-52 animate-pulse rounded bg-muted" />
-        {[...Array(6)].map((_, i) => (
-          <div key={i} className="h-9 animate-pulse rounded bg-muted" />
-        ))}
-      </div>
+      <DatabaseLoadingAnimation text="Memuat leaderboard..." />
     );
   }
 

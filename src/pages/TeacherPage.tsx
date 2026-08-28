@@ -6,6 +6,7 @@ import { Id } from "@/convex/_generated/dataModel";
 import { Download, Pencil, Trash2, CheckSquare, Square, X, ArrowRight } from "lucide-react";
 import { getExercise } from "@/lib/curriculum";
 import { WORLD_SKILL } from "@/lib/game";
+import { DatabaseLoadingAnimation } from "@/components/ui/lottie-animation";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import AssignmentsPanel from "@/components/teacher/AssignmentsPanel";
@@ -351,12 +352,7 @@ export default function TeacherPage() {
 
   if (!q) {
     return (
-      <div className="mx-auto max-w-6xl space-y-3" aria-busy>
-        <div className="h-8 w-56 animate-pulse rounded bg-muted" />
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="h-9 animate-pulse rounded bg-muted" />
-        ))}
-      </div>
+      <DatabaseLoadingAnimation text="Memuat data guru..." />
     );
   }
 

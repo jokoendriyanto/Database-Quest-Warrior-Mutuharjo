@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
+import { DatabaseLoadingAnimation } from "@/components/ui/lottie-animation";
 import {
   Select,
   SelectContent,
@@ -45,12 +46,7 @@ export default function AdminPage() {
 
   if (!overview || !users) {
     return (
-      <div className="mx-auto max-w-6xl space-y-3" aria-busy>
-        <div className="h-8 w-56 animate-pulse rounded bg-muted" />
-        {[...Array(6)].map((_, i) => (
-          <div key={i} className="h-9 animate-pulse rounded bg-muted" />
-        ))}
-      </div>
+      <DatabaseLoadingAnimation text="Memuat panel admin..." />
     );
   }
 

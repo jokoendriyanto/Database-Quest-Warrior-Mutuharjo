@@ -6,6 +6,7 @@ import { LESSON_MAP } from "@/lib/curriculum";
 import { schoolDb, kantinDb } from "@/lib/data/datasets";
 import { runSql, type RunResult, type Database as SqlDatabase } from "@/lib/sql/engine";
 import { Button } from "@/components/ui/button";
+import { DatabaseLoadingAnimation } from "@/components/ui/lottie-animation";
 import { Textarea } from "@/components/ui/textarea";
 import {
   ChevronDown,
@@ -40,12 +41,7 @@ export default function AssignmentsPage() {
 
   if (!data || !challenges) {
     return (
-      <div className="mx-auto max-w-3xl space-y-3" aria-busy>
-        <div className="h-8 w-56 animate-pulse rounded bg-muted" />
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="h-14 animate-pulse rounded bg-muted" />
-        ))}
-      </div>
+      <DatabaseLoadingAnimation text="Memuat tugas..." />
     );
   }
 
