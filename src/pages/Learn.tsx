@@ -4,6 +4,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { WORLDS } from "@/lib/curriculum";
 import { cn } from "@/lib/utils";
+import { LottieAnimation, SparkleAnimation } from "@/components/ui/lottie-animation";
 
 type WorldStatus = "completed" | "current" | "available" | "locked" | "soon";
 
@@ -81,7 +82,7 @@ export default function Learn() {
                 )}
               >
                 {status === "current" ? (
-                  <Play className="size-4 fill-current" aria-label="Current" />
+                  <div className="flex items-center gap-1"><SparkleAnimation /><Play className="size-4 fill-current" aria-label="Current" /></div>
                 ) : status === "completed" ? (
                   <Check className="size-4" aria-hidden />
                 ) : locked ? (

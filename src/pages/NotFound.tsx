@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router";
 import { ArrowLeft, Home, Map, LayoutDashboard, Search } from "lucide-react";
 import { motion } from "framer-motion";
 import { AppFooter } from "@/components/AppFooter";
+import { LottieAnimation } from "@/components/ui/lottie-animation";
 
 const NAV_LINKS = [
   { to: "/", label: "Beranda", desc: "Kembali ke halaman utama", icon: Home },

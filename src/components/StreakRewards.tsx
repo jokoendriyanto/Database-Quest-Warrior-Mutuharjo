@@ -4,6 +4,7 @@ import { Flame, Gift, Lock, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { StreakFireAnimation, LottieAnimation, GiftRevealAnimation } from "@/components/ui/lottie-animation";
 
 export default function StreakRewards() {
   const data = useQuery(api.shop.getStreakRewards);

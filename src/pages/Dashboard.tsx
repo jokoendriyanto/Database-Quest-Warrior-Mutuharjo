@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 import { Coins } from "lucide-react";
 import DailyQuests from "@/components/DailyQuests";
 import { Link as LinkIcon } from "lucide-react";
+import { StreakFireAnimation, XpGainAnimation, CoinAnimation, SparkleAnimation } from "@/components/ui/lottie-animation";
 
 /** Sapaan sesuai jam — kecil, tapi bikin dashboard terasa hidup. */
 function greeting(): string {
@@ -56,14 +57,9 @@ export default function Dashboard() {
 
   if (!data) {
     return (
-      <div className="space-y-4" aria-busy>
-        <div className="h-40 animate-pulse rounded-lg bg-muted" />
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-24 animate-pulse rounded-lg bg-muted" />
-          ))}
-        </div>
-        <div className="h-32 animate-pulse rounded-lg bg-muted" />
+      <div className="flex flex-col items-center justify-center py-24" aria-busy>
+        <StreakFireAnimation days={0} />
+        <p className="mt-4 text-sm text-muted-foreground animate-pulse">Memuat dashboard...</p>
       </div>
     );
   }
@@ -157,7 +153,7 @@ export default function Dashboard() {
           </span>
           {stats.streak > 0 && (
             <span className="flex items-center gap-1 rounded-md border border-warning/40 bg-warning/10 px-2.5 py-1 text-warning">
-              <Flame className="size-3" aria-hidden /> {stats.streak} HARI STREAK
+              <StreakFireAnimation days={stats.streak} />
             </span>
           )}
           {user.className && (

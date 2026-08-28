@@ -3,6 +3,7 @@ import { api } from "@/convex/_generated/api";
 import { Coins, CheckCircle, Circle, Flame } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { StreakFireAnimation, LottieAnimation } from "@/components/ui/lottie-animation";
 
 export default function DailyQuests() {
   const data = useQuery(api.shop.getDailyQuests);

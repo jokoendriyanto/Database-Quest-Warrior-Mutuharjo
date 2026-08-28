@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Play, RotateCcw, Terminal, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { playCorrect, playWrong } from "@/lib/sounds";
+import { QueryRunningAnimation, QuerySuccessAnimation } from "@/components/ui/lottie-animation";
 
 /* ------------------------------ result table ---------------------------- */
 

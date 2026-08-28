@@ -5,6 +5,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { ArrowLeft, ArrowRight, Check, CircleHelp, ShieldAlert, Timer } from "lucide-react";
 import { playQuizPassed, playWrong } from "@/lib/sounds";
+import { LottieAnimation, XpGainAnimation } from "@/components/ui/lottie-animation";
 import {
   exerciseDataset,
   getExercise,
@@ -316,11 +317,16 @@ function QuizSection({
           <CircleHelp className="size-3.5" />{" "}
           {result.passed ? "LULUS ✓" : "BELUM LULUS"} · SKOR {result.score}/{result.total}
         </legend>
-        <p className="text-sm text-secondary-foreground">
-          {result.passed
-            ? "Mantap — latihan lesson ini terbuka. "
-            : `Butuh benar ≥ ${Math.ceil(result.total * 0.75)} dari ${result.total}. Bedah jawabanmu di bawah, lalu coba lagi dengan soal baru. `}
-        </p>
+        <div className="flex items-center gap-3">
+          {result.passed && <LottieAnimation animation="quiz-correct" size="sm" loop={false} />}
+          {!result.passed && <LottieAnimation animation="quiz-wrong" size="sm" loop={false} />}
+          <p className="text-sm text-secondary-foreground">
+            {result.passed
+              ? "Mantap — latihan lesson ini terbuka. "
+              : `Butuh benar ≥ ${Math.ceil(result.total * 0.75)} dari ${result.total}. Bedah jawabanmu di bawah, lalu coba lagi dengan soal baru. `}
+          </p>
+        </div>
+        {result.passed && <XpGainAnimation amount={result.total * 20} />}
         <ul className="mt-3 space-y-3">
           {result.results.map((r, i) => (
             <li key={i} className="rounded-md border border-border bg-background p-3">

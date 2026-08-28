@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Play } from "lucide-react";
+import { LottieAnimation, XpGainAnimation, SparkleAnimation } from "@/components/ui/lottie-animation";
 import {
   battlePool,
   exerciseDataset,
@@ -319,9 +320,14 @@ export default function BattlePage() {
               Query belum sesuai — cek hint di lesson terkait, lalu rematch.
             </p>
           )}
-          <p className="mt-3 whitespace-pre-line text-sm text-secondary-foreground">{result.victoryCopy}</p>
+          <div className="flex items-center gap-2">
+            {result.correct && <SparkleAnimation />}
+            <p className="mt-3 whitespace-pre-line text-sm text-secondary-foreground">{result.victoryCopy}</p>
+          </div>
           {result.xpAwarded > 0 && (
-            <p className="mt-2 font-mono text-sm font-bold text-primary">+{result.xpAwarded} XP</p>
+            <div className="mt-2">
+              <XpGainAnimation amount={result.xpAwarded} />
+            </div>
           )}
         </div>
 
