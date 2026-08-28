@@ -2,12 +2,10 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { exerciseDataset } from "@/lib/curriculum";
-import { runSql, SqlError } from "@/lib/sql/engine";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { Loader2, Users, Copy, Check, Play, Square } from "lucide-react";
+import { Loader2, Users, Copy, Check, Play, Square, AlertCircle } from "lucide-react";
 import { playBattleWin, playBattleLose } from "@/lib/sounds";
 
 interface Props {
@@ -20,6 +18,7 @@ export default function ClassroomMode({ role }: Props) {
   const [activeSessionId, setActiveSessionId] = useState<Id<"classroomSessions"> | null>(null);
   const [sql, setSql] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [joining, setJoining] = useState(false);
   const [result, setResult] = useState<{ correct: boolean; elapsedMs: number; xpEarned: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -42,6 +41,13 @@ export default function ClassroomMode({ role }: Props) {
     return () => clearInterval(iv);
   }, [activeSessionId]);
 
+  // Auto-clear error after 5 seconds
+  useEffect(() => {
+    if (!error) return;
+    const t = setTimeout(() => setError(null), 5000);
+    return () => clearTimeout(t);
+  }, [error]);
+
   const handleCreate = async (className: string, exerciseId: string) => {
     try {
       const r = await createSession({ className, exerciseId });
@@ -52,12 +58,30 @@ export default function ClassroomMode({ role }: Props) {
   };
 
   const handleJoin = async () => {
-    if (!joinCode.trim()) return;
+    const code = joinCode.trim().toUpperCase();
+    if (code.length < 4) {
+      setError("Kode harus 4 karakter.");
+      return;
+    }
+    setJoining(true);
+    setError(null);
     try {
-      const r = await joinSession({ code: joinCode.trim().toUpperCase() });
+      const r = await joinSession({ code });
       setActiveSessionId(r.sessionId);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Gagal join.");
+      const msg = e instanceof Error ? e.message : "Gagal gabung.";
+      // Make error messages more student-friendly
+      if (msg.includes("Not authenticated")) {
+        setError("Silakan login ulang, lalu coba lagi.");
+      } else if (msg.includes("tidak ditemukan")) {
+        setError("Kode tidak ditemukan. Pastikan kode sudah benar dan guru sudah membuat sesi.");
+      } else if (msg.includes("selesai")) {
+        setError("Sesi ini sudah selesai. Tunggu guru buat sesi baru.");
+      } else {
+        setError(msg);
+      }
+    } finally {
+      setJoining(false);
     }
   };
 
@@ -71,9 +95,16 @@ export default function ClassroomMode({ role }: Props) {
       if (r.correct) playBattleWin();
       else playBattleLose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Gagal submit.");
+      const msg = e instanceof Error ? e.message : "Gagal submit.";
+      setError(msg);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !joining && joinCode.trim().length >= 4) {
+      handleJoin();
     }
   };
 
@@ -99,21 +130,54 @@ export default function ClassroomMode({ role }: Props) {
         <div className="mt-3 flex gap-2">
           <Input
             value={joinCode}
-            onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+            onChange={(e) => {
+              setJoinCode(e.target.value.toUpperCase().slice(0, 4));
+              setError(null);
+            }}
+            onKeyDown={handleKeyDown}
             placeholder="Kode 4 huruf"
             className="font-mono text-center tracking-widest uppercase"
             maxLength={4}
+            disabled={joining}
           />
-          <Button onClick={handleJoin} disabled={!joinCode.trim()}>Gabung</Button>
+          <Button
+            onClick={handleJoin}
+            disabled={!joinCode.trim() || joining || joinCode.trim().length < 4}
+          >
+            {joining ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              "Gabung"
+            )}
+          </Button>
         </div>
-        {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
+        {error && (
+          <div className="mt-2 flex items-start gap-1.5 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2">
+            <AlertCircle className="mt-0.5 size-3.5 shrink-0 text-destructive" />
+            <p className="text-xs text-destructive">{error}</p>
+          </div>
+        )}
+        <p className="mt-2 text-[11px] text-muted-foreground/60">
+          Kode diberikan oleh guru saat sesi kelas dimulai.
+        </p>
       </section>
     );
   }
 
-  if (!session) return <div className="panel h-32 animate-pulse" />;
-
-  const myResult = session.participants.find((p) => p.correct && p.elapsedMs !== null);
+  if (!session) {
+    return (
+      <section className="panel p-5">
+        <div className="flex items-center gap-2">
+          <Users className="size-4 text-info" strokeWidth={1.75} />
+          <h3 className="text-sm font-bold uppercase tracking-wide">Classroom Mode</h3>
+        </div>
+        <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" />
+          Memuat sesi kelas...
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="panel p-5 animate-fade-in">
@@ -122,16 +186,15 @@ export default function ClassroomMode({ role }: Props) {
           <Users className="size-4 text-info" strokeWidth={1.75} />
           <h3 className="text-sm font-bold uppercase tracking-wide">Classroom Session</h3>
         </div>
-        <div className="flex items-center gap-2">
-          <span className={cn(
-            "rounded border px-2 py-0.5 font-mono text-[10px] font-bold uppercase",
-            session.status === "active" ? "border-success/40 bg-success/10 text-success" :
-            session.status === "waiting" ? "border-warning/40 bg-warning/10 text-warning" :
-            "border-border bg-secondary text-muted-foreground",
-          )}>
-            {session.status}
-          </span>
-        </div>
+        <span className={cn(
+          "rounded border px-2 py-0.5 font-mono text-[10px] font-bold uppercase",
+          session.status === "active" ? "border-success/40 bg-success/10 text-success" :
+          session.status === "waiting" ? "border-warning/40 bg-warning/10 text-warning" :
+          "border-border bg-secondary text-muted-foreground",
+        )}>
+          {session.status === "waiting" ? "Menunggu" :
+           session.status === "active" ? "Berlangsung" : "Selesai"}
+        </span>
       </div>
 
       {/* Session info */}
@@ -159,6 +222,14 @@ export default function ClassroomMode({ role }: Props) {
         </Button>
       )}
 
+      {/* Waiting message for students */}
+      {session.status === "waiting" && !isTeacher && (
+        <div className="mt-4 rounded-md border border-warning/30 bg-warning/5 p-3">
+          <p className="text-sm text-warning">⏳ Menunggu guru memulai sesi...</p>
+          <p className="mt-1 text-xs text-muted-foreground">Sesi akan aktif setelah guru menekan "Mulai Sesi".</p>
+        </div>
+      )}
+
       {/* SQL Editor (student, during active) */}
       {session.status === "active" && !isTeacher && !result?.correct && (
         <div className="mt-4 space-y-3">
@@ -169,7 +240,12 @@ export default function ClassroomMode({ role }: Props) {
             className="w-full rounded-lg border border-border bg-card p-3 font-mono text-sm focus:border-primary focus:outline-none"
             rows={3}
           />
-          {error && <p className="text-xs text-destructive">{error}</p>}
+          {error && (
+            <div className="flex items-start gap-1.5 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2">
+              <AlertCircle className="mt-0.5 size-3.5 shrink-0 text-destructive" />
+              <p className="text-xs text-destructive">{error}</p>
+            </div>
+          )}
           <Button onClick={handleSubmit} disabled={submitting || !sql.trim()} size="sm">
             {submitting ? <Loader2 className="size-3.5 animate-spin" /> : "Submit Jawaban"}
           </Button>
@@ -179,6 +255,13 @@ export default function ClassroomMode({ role }: Props) {
       {result?.correct && (
         <div className="mt-3 rounded-md border border-success/40 bg-success/10 p-3">
           <p className="text-sm font-bold text-success">✓ Benar! {(result.elapsedMs / 1000).toFixed(1)}s · +{result.xpEarned} XP</p>
+        </div>
+      )}
+
+      {/* Finished message */}
+      {session.status === "finished" && !result?.correct && (
+        <div className="mt-3 rounded-md border border-border bg-secondary/40 p-3">
+          <p className="text-sm text-muted-foreground">Sesi sudah berakhir.</p>
         </div>
       )}
 

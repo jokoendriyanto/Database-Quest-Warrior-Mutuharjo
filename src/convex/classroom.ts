@@ -45,15 +45,27 @@ export const joinSession = mutation({
   args: { code: v.string() },
   handler: async (ctx, { code }) => {
     const userId = await getAuthUserId(ctx);
-    if (userId === null) throw new Error("Not authenticated");
+    if (userId === null) throw new Error("Silakan login terlebih dahulu.");
+
+    // Normalize code: trim and uppercase, remove any spaces
+    const normalizedCode = code.trim().toUpperCase().replace(/\s+/g, "");
+    if (normalizedCode.length !== 4) {
+      throw new Error("Kode harus tepat 4 karakter.");
+    }
 
     const session = await ctx.db
       .query("classroomSessions")
-      .withIndex("by_code", (q) => q.eq("code", code.toUpperCase()))
+      .withIndex("by_code", (q) => q.eq("code", normalizedCode))
       .first();
-    if (!session) throw new Error("Kode sesi tidak ditemukan.");
-    if (session.status === "finished") throw new Error("Sesi sudah selesai.");
-    if (session.participants.includes(userId)) return { sessionId: session._id };
+    if (!session) {
+      throw new Error("Kode sesi tidak ditemukan. Pastikan kode sudah benar dan guru sudah membuat sesi.");
+    }
+    if (session.status === "finished") {
+      throw new Error("Sesi ini sudah selesai. Tunggu guru membuat sesi baru.");
+    }
+    if (session.participants.includes(userId)) {
+      return { sessionId: session._id };
+    }
 
     await ctx.db.patch(session._id, {
       participants: [...session.participants, userId],
@@ -79,16 +91,16 @@ export const submitAnswer = mutation({
   args: { sessionId: v.id("classroomSessions"), sqlText: v.string() },
   handler: async (ctx, { sessionId, sqlText }) => {
     const userId = await getAuthUserId(ctx);
-    if (userId === null) throw new Error("Not authenticated");
+    if (userId === null) throw new Error("Silakan login terlebih dahulu.");
     const session = await ctx.db.get(sessionId);
-    if (!session || session.status !== "active") throw new Error("Sesi tidak aktif.");
+    if (!session || session.status !== "active") throw new Error("Sesi tidak aktif atau belum dimulai.");
 
-    // Already submitted?
+    // Already submitted correctly?
     const existing = session.results.find((r) => r.userId === userId);
-    if (existing?.correct) throw new Error("Sudah menjawab benar.");
+    if (existing?.correct) throw new Error("Kamu sudah menjawab benar.");
 
     const exercise = EXERCISE_MAP.get(session.exerciseId);
-    if (!exercise) throw new Error("Exercise not found.");
+    if (!exercise) throw new Error("Latihan tidak ditemukan.");
 
     const db = exerciseDataset(exercise.dataset);
     const startTime = Date.now();
