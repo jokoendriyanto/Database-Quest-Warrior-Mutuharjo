@@ -9,6 +9,7 @@ import { AVATAR_OPTIONS } from "@/lib/game";
 import { Loader2, PartyPopper, ArrowRight, Flame, Trophy, Swords, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AvatarUpload } from "@/components/AvatarUpload";
+import { LottieAnimation, QuerySuccessAnimation } from "@/components/ui/lottie-animation";
 import { runSql } from "@/lib/sql/engine";
 import { exerciseDataset } from "@/lib/curriculum";
 
@@ -107,7 +108,10 @@ export default function Onboarding() {
 SELECT * FROM journey WHERE student = '${firstName.toLowerCase()}';`}
             </pre>
 
-            <Button onClick={() => setStep(1)} className="mt-7 h-11 w-full font-bold sm:w-auto sm:px-8">
+            <div className="mt-6 flex justify-center">
+              <LottieAnimation animation="sql-quest" size="lg" loop={false} />
+            </div>
+            <Button onClick={() => setStep(1)} className="mt-5 h-11 w-full font-bold sm:w-auto sm:px-8">
               Mulai Setup <ArrowRight className="size-4" />
             </Button>
           </section>
@@ -220,7 +224,10 @@ SELECT * FROM journey WHERE student = '${firstName.toLowerCase()}';`}
             )}
             {tutorialResult && (
               <div className="mt-2 overflow-hidden rounded-md border border-success/40 bg-success/10 p-3">
-                <p className="text-sm font-bold text-success">✓ Benar! Query-mu jalan.</p>
+                <div className="flex items-center gap-2">
+                  <QuerySuccessAnimation />
+                  <p className="text-sm font-bold text-success">Benar! Query-mu jalan.</p>
+                </div>
                 <pre className="mt-1 max-w-full overflow-x-auto whitespace-pre-wrap break-all font-mono text-xs text-muted-foreground">{JSON.stringify(tutorialResult.rows, null, 2)}</pre>
               </div>
             )}
@@ -249,7 +256,9 @@ SELECT * FROM journey WHERE student = '${firstName.toLowerCase()}';`}
               ].map((r) => (
                 <li key={r.title} className="flex items-start gap-3 py-3.5 first:pt-0 last:pb-0">
                   <span className="font-mono text-xs text-muted-foreground">{r.num}</span>
-                  <r.icon className="mt-0.5 size-4 shrink-0 text-primary" />
+                  {r.num === "01" && <LottieAnimation animation="xp-gain" size="xs" loop={false} />}
+                  {r.num === "02" && <LottieAnimation animation="fire-streak" size="xs" />}
+                  {r.num === "03" && <LottieAnimation animation="sword-clash" size="xs" loop={false} />}
                   <div>
                     <p className="text-sm font-bold">{r.title}</p>
                     <p className="text-xs leading-relaxed text-muted-foreground">{r.text}</p>
@@ -264,7 +273,7 @@ SELECT * FROM journey WHERE student = '${firstName.toLowerCase()}';`}
                   <Loader2 className="size-4 animate-spin" />
                 ) : (
                   <>
-                    <PartyPopper className="size-4" /> Masuk ke Dashboard
+                    <LottieAnimation animation="trophy-shine" size="xs" loop /> Masuk ke Dashboard
                   </>
                 )}
               </Button>

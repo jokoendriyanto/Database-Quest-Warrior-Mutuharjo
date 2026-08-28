@@ -5,6 +5,7 @@ import { Coins, ShoppingCart, Sparkles, Crown, Zap, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { LottieAnimation, CoinAnimation, SparkleAnimation, GiftRevealAnimation } from "@/components/ui/lottie-animation";
 
 type Category = "all" | "avatar" | "title" | "booster" | "cosmetic";
 
@@ -46,10 +47,9 @@ export default function ShopPage() {
 
   if (!shopData) {
     return (
-      <div className="mx-auto max-w-4xl space-y-4 px-4">
-        {[...Array(6)].map((_, i) => (
-          <div key={i} className="h-24 animate-pulse rounded-lg bg-muted" />
-        ))}
+      <div className="flex flex-col items-center justify-center py-20">
+        <LottieAnimation animation="coin-stack" size="lg" />
+        <p className="mt-4 text-sm text-muted-foreground animate-pulse">Memuat toko...</p>
       </div>
     );
   }
@@ -60,8 +60,9 @@ export default function ShopPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6 px-4 pb-20">
       {toast && (
-        <div className="fixed top-4 right-4 z-[70] rounded-lg border border-border bg-card px-4 py-3 shadow-xl text-sm font-medium animate-in fade-in slide-in-from-right-4">
-          {toast}
+        <div className="fixed top-4 right-4 z-[70] flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 shadow-xl text-sm font-medium animate-in fade-in slide-in-from-right-4">
+          {toast.startsWith("✅") && <GiftRevealAnimation />}
+          <span>{toast}</span>
         </div>
       )}
 
@@ -71,7 +72,7 @@ export default function ShopPage() {
         <div className="mt-1 flex items-center justify-between">
           <h1 className="text-2xl font-bold tracking-tight">Toko Koin</h1>
           <div className="flex items-center gap-2 rounded-lg border border-warning/30 bg-warning/10 px-4 py-2">
-            <Coins className="size-5 text-warning" />
+            <CoinAnimation size="sm" />
             <span className="text-xl font-bold tabular-nums">{coins.toLocaleString()}</span>
           </div>
         </div>
@@ -124,8 +125,8 @@ export default function ShopPage() {
                 )}
               >
                 {isOwned && (
-                  <div className="absolute -top-2 -right-2 rounded-full bg-success px-2 py-0.5 text-[10px] font-bold text-white">
-                    DIMILIKI
+                  <div className="absolute -top-2 -right-2 flex items-center gap-1 rounded-full bg-success px-2 py-0.5 text-[10px] font-bold text-white">
+                    <SparkleAnimation /> DIMILIKI
                   </div>
                 )}
 
