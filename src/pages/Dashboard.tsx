@@ -25,6 +25,9 @@ import {
   BADGES,
 } from "@/lib/game";
 import { cn } from "@/lib/utils";
+import { Coins } from "lucide-react";
+import DailyQuests from "@/components/DailyQuests";
+import { Link as LinkIcon } from "lucide-react";
 
 /** Sapaan sesuai jam — kecil, tapi bikin dashboard terasa hidup. */
 function greeting(): string {
@@ -351,6 +354,9 @@ export default function Dashboard() {
 
         {/* --- Kolom kanan: progression + misi harian --- */}
         <div className="space-y-4">
+          {/* Daily Quests (server-powered) */}
+          <DailyQuests />
+
           {/* Level card */}
           <section className="panel p-5" aria-label="Level dan badge">
             <p className="kicker">PROGRESSION</p>

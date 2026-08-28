@@ -24,6 +24,16 @@ export interface StatsDoc {
   duelWins?: number;
   duelLosses?: number;
   duelDraws?: number;
+  // Shop & economy
+  shopItems?: string[];
+  // Daily quests
+  dailyQuestProgress?: {
+    date: string;
+    completed: string[];
+    progress: Record<string, number>;
+  };
+  // Streak rewards
+  streakRewardsClaimed?: number[];
 }
 
 export function todayStr(): string {
@@ -57,6 +67,9 @@ export function zeroStats(userId: any): StatsDoc {
     duelWins: 0,
     duelLosses: 0,
     duelDraws: 0,
+    shopItems: [],
+    dailyQuestProgress: undefined,
+    streakRewardsClaimed: [],
   } as unknown as StatsDoc;
 }
 
@@ -95,6 +108,8 @@ export async function getStats(ctx: { db: any }, userId: any): Promise<StatsDoc>
     duelWins: 0,
     duelLosses: 0,
     duelDraws: 0,
+    shopItems: [],
+    streakRewardsClaimed: [],
   });
   return (await ctx.db.get(id))! as unknown as StatsDoc;
 }

@@ -16,12 +16,14 @@ import {
   X,
   Sun,
   Moon,
+  Coins,
 } from "lucide-react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/hooks/use-theme";
 import { levelProgress, rankFromLevel } from "@/lib/game";
 import { cn } from "@/lib/utils";
+import { MobileBottomNav } from "@/components/MobileBottomNav";
 
 interface NavItem {
   to: string;
@@ -47,7 +49,10 @@ const NAV_GROUPS: { group: string; items: NavItem[] }[] = [
   },
   {
     group: "YOU",
-    items: [{ to: "/profile", label: "Profil", icon: User }],
+    items: [
+      { to: "/profile", label: "Profil", icon: User },
+      { to: "/shop", label: "Shop", icon: Coins },
+    ],
   },
 ];
 
@@ -382,11 +387,12 @@ export function AppShell() {
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-[1200px] flex-1 px-4 py-6 sm:px-6 lg:px-8">
+        <main className="mx-auto w-full max-w-[1200px] flex-1 px-4 py-6 pb-24 sm:px-6 sm:pb-6 lg:px-8">
           <Outlet />
         </main>
 
         <AppShellFooter />
+        <MobileBottomNav />
       </div>
     </div>
   );

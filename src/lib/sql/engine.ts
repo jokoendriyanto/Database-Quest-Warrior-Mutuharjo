@@ -5,8 +5,9 @@
  *
  * Supported:
  *   SELECT [DISTINCT] items FROM t
- *     [INNER|LEFT JOIN t2 ON a = b] [WHERE ...] [GROUP BY cols]
- *     [ORDER BY col [ASC|DESC], ...] [LIMIT n]
+ *     [INNER|LEFT|RIGHT JOIN t2 ON a = b] [WHERE ...] [GROUP BY cols] [HAVING cond]
+ *     [ORDER BY col [ASC|DESC], ...] [LIMIT n [OFFSET m]]
+ *     [UNION [ALL] SELECT ...]
  *   INSERT INTO t [(cols)] VALUES (...), (...)
  *   UPDATE t SET c = v, ... [WHERE ...]
  *   DELETE FROM t [WHERE ...]
@@ -44,7 +45,7 @@ interface OrderItem {
 }
 interface JoinClause {
   table: TableRef;
-  type: "inner" | "left";
+  type: "inner" | "left" | "right";
   onLeft: string;
   onRight: string;
 }
@@ -60,8 +61,11 @@ interface SelectStmt {
   join?: JoinClause;
   where?: Expr;
   groupBy?: string[];
+  having?: Expr;
   orderBy?: OrderItem[];
   limit?: number;
+  offset?: number;
+  union?: { stmt: SelectStmt; all: boolean };
 }
 interface InsertStmt {
   type: "insert";
@@ -102,10 +106,10 @@ type Expr =
 /* ----------------------------- Tokenizer ----------------------------- */
 
 const KEYWORDS = new Set([
-  "select","distinct","from","where","group","by","order","limit","as",
+  "select","distinct","from","where","group","by","order","limit","offset","as",
   "insert","into","values","update","set","delete","join","inner","left",
   "right","on","and","or","not","like","in","between","is","null","asc",
-  "desc","count","sum","avg","min","max","exists",
+  "desc","count","sum","avg","min","max","exists","having","union","all",
 ]);
 
 interface Token {
@@ -256,10 +260,11 @@ class Parser {
     const from = this.parseTableRef();
     let join: JoinClause | undefined;
     while (this.isKw("inner", "left", "right", "cross", "join")) {
-      let type: "inner" | "left" = "inner";
+      let type: "inner" | "left" | "right" = "inner";
       if (this.eatKw("inner")) type = "inner";
       else if (this.eatKw("left")) type = "left";
-      else if (this.isKw("right", "cross")) {
+      else if (this.eatKw("right")) type = "right";
+      else if (this.isKw("cross")) {
         const kw = this.next().value.toUpperCase();
         throw new SqlError(
           "ER_UNSUPPORTED",
@@ -306,6 +311,9 @@ class Parser {
       } while (this.eatComma());
     }
 
+    let having: Expr | undefined;
+    if (this.eatKw("having")) having = this.parseExpr();
+
     let orderBy: OrderItem[] | undefined;
     if (this.isKw("order")) {
       this.next();
@@ -323,14 +331,42 @@ class Parser {
     }
 
     let limit: number | undefined;
+    let offset: number | undefined;
     if (this.eatKw("limit")) {
       const t = this.next();
       if (t.type !== "num") throw new SqlError("ER_PARSE", "LIMIT butuh angka, contoh: LIMIT 5");
       limit = parseInt(t.value, 10);
+      // LIMIT n OFFSET m
+      if (this.eatKw("offset")) {
+        const o = this.next();
+        if (o.type !== "num") throw new SqlError("ER_PARSE", "OFFSET butuh angka, contoh: OFFSET 10");
+        offset = parseInt(o.value, 10);
+      }
+    }
+    // OFFSET m LIMIT n (reversed order)
+    if (this.eatKw("offset")) {
+      const o = this.next();
+      if (o.type !== "num") throw new SqlError("ER_PARSE", "OFFSET butuh angka, contoh: OFFSET 10");
+      offset = parseInt(o.value, 10);
+      if (this.eatKw("limit")) {
+        const t = this.next();
+        if (t.type !== "num") throw new SqlError("ER_PARSE", "LIMIT butuh angka, contoh: LIMIT 5");
+        limit = parseInt(t.value, 10);
+      }
     }
 
     this.eatSemicolon();
-    return { type: "select", distinct, items, from, join, where, groupBy, orderBy, limit };
+    const stmt: SelectStmt = { type: "select", distinct, items, from, join, where, groupBy, having, orderBy, limit, offset };
+
+    // UNION / UNION ALL
+    if (this.isKw("union")) {
+      this.next();
+      const all = this.eatKw("all");
+      const unionStmt = this.parseSelect();
+      stmt.union = { stmt: unionStmt, all };
+    }
+
+    return stmt;
   }
 
   private parseTableRef(): TableRef {
@@ -699,7 +735,6 @@ function buildJoin(base: Table, baseName: string, db: Database, join: JoinClause
   const rows: (Row & { __tables__: string[] })[] = [];
 
   const getVal = (row: Row, tables: string[], col: string, side: "l" | "r"): unknown => {
-    // try qualified with this side's alias first, then bare
     const candidates = col.includes(".")
       ? [col]
       : [`${side === "l" ? baseName : rightName}.${col}`, col];
@@ -709,32 +744,67 @@ function buildJoin(base: Table, baseName: string, db: Database, join: JoinClause
     throw new SqlError("ER_BAD_COLUMN", `Kolom \`${col}\` nggak ketemu untuk JOIN. Coba tulis lengkap, misalnya \`${side === "l" ? baseName : rightName}.${col}\`.`);
   };
 
-  let matchedRight = false;
-  for (const lr of base.rows) {
-    matchedRight = false;
+  if (join.type === "right") {
+    // RIGHT JOIN: keep all rows from right table, fill left with NULL
+    let matchedLeft = false;
     for (const rr of right.rows) {
-      const merged: Row = {};
-      for (const k of base.columns) merged[`${baseName}.${k}`] = lr[k];
-      for (const k of right.columns) {
-        const qk = `${rightName}.${k}`;
-        merged[qk] = rr[k];
-        if (!(k in merged) || merged[k] === undefined) merged[k] = rr[k];
+      matchedLeft = false;
+      for (const lr of base.rows) {
+        const merged: Row = {};
+        for (const k of base.columns) merged[`${baseName}.${k}`] = lr[k];
+        for (const k of right.columns) {
+          const qk = `${rightName}.${k}`;
+          merged[qk] = rr[k];
+          if (!(k in merged) || merged[k] === undefined) merged[k] = rr[k];
+        }
+        for (const k of base.columns) if (!(k in merged)) merged[k] = lr[k];
+        const lv = getVal(merged, [], join.onLeft, "l");
+        const rv = getVal(merged, [], join.onRight, "r");
+        if (looseEquals(lv, rv)) {
+          matchedLeft = true;
+          rows.push({ ...merged, __tables__: [baseName, rightName] });
+        }
       }
-      // also expose unqualified base columns when not conflicting
-      for (const k of base.columns) if (!(k in merged)) merged[k] = lr[k];
-      const lv = getVal(merged, [], join.onLeft, "l");
-      const rv = getVal(merged, [], join.onRight, "r");
-      if (looseEquals(lv, rv)) {
-        matchedRight = true;
+      if (!matchedLeft) {
+        const merged: Row = {};
+        for (const k of base.columns) merged[`${baseName}.${k}`] = null;
+        for (const k of right.columns) {
+          const qk = `${rightName}.${k}`;
+          merged[qk] = rr[k];
+          if (!(k in merged) || merged[k] === undefined) merged[k] = rr[k];
+        }
+        for (const k of right.columns) if (!(k in merged)) merged[k] = rr[k];
         rows.push({ ...merged, __tables__: [baseName, rightName] });
       }
     }
-    if (!matchedRight && join.type === "left") {
-      const merged: Row = {};
-      for (const k of base.columns) merged[`${baseName}.${k}`] = lr[k];
-      for (const k of base.columns) if (!(k in merged)) merged[k] = lr[k];
-      for (const k of right.columns) merged[`${rightName}.${k}`] = null;
-      rows.push({ ...merged, __tables__: [baseName, rightName] });
+  } else {
+    // INNER / LEFT JOIN
+    let matchedRight = false;
+    for (const lr of base.rows) {
+      matchedRight = false;
+      for (const rr of right.rows) {
+        const merged: Row = {};
+        for (const k of base.columns) merged[`${baseName}.${k}`] = lr[k];
+        for (const k of right.columns) {
+          const qk = `${rightName}.${k}`;
+          merged[qk] = rr[k];
+          if (!(k in merged) || merged[k] === undefined) merged[k] = rr[k];
+        }
+        for (const k of base.columns) if (!(k in merged)) merged[k] = lr[k];
+        const lv = getVal(merged, [], join.onLeft, "l");
+        const rv = getVal(merged, [], join.onRight, "r");
+        if (looseEquals(lv, rv)) {
+          matchedRight = true;
+          rows.push({ ...merged, __tables__: [baseName, rightName] });
+        }
+      }
+      if (!matchedRight && join.type === "left") {
+        const merged: Row = {};
+        for (const k of base.columns) merged[`${baseName}.${k}`] = lr[k];
+        for (const k of base.columns) if (!(k in merged)) merged[k] = lr[k];
+        for (const k of right.columns) merged[`${rightName}.${k}`] = null;
+        rows.push({ ...merged, __tables__: [baseName, rightName] });
+      }
     }
   }
   return { rows };
@@ -891,6 +961,12 @@ function execSelect(stmt: SelectStmt, sourceDb: Database): RunResult {
       }
       resultRows.push(out);
     }
+    // HAVING filter: applied AFTER all groups are aggregated
+    if (stmt.having) {
+      resultRows = resultRows.filter((outRow) => {
+        return truthy(evalExpr(stmt.having!, outRow, Object.keys(outRow)));
+      });
+    }
     columns = unique(Object.keys(resultRows[0] ?? {}));
   } else {
     const seen = new Set<string>();
@@ -930,6 +1006,27 @@ function execSelect(stmt: SelectStmt, sourceDb: Database): RunResult {
   }
 
   if (stmt.limit != null) resultRows = resultRows.slice(0, stmt.limit);
+  if (stmt.offset != null && stmt.offset > 0) resultRows = resultRows.slice(stmt.offset);
+
+  // UNION / UNION ALL
+  if (stmt.union) {
+    const rightResult = execSelect(stmt.union.stmt, sourceDb);
+    if (stmt.union.all) {
+      resultRows.push(...(rightResult.rows as Row[]));
+    } else {
+      // UNION DISTINCT: deduplicate
+      const seenSigs = new Set(resultRows.map((r) => JSON.stringify(orderKeys(r))));
+      for (const rr of rightResult.rows) {
+        const sig = JSON.stringify(orderKeys(rr as Row));
+        if (!seenSigs.has(sig)) {
+          seenSigs.add(sig);
+          resultRows.push(rr as Row);
+        }
+      }
+    }
+    // Recompute columns after UNION
+    columns = unique(resultRows.flatMap((r) => Object.keys(r)));
+  }
 
   // strip __tables__
   const clean = resultRows.map((r) => {

@@ -74,6 +74,16 @@ const schema = defineSchema(
       duelWins: v.optional(v.number()),
       duelLosses: v.optional(v.number()),
       duelDraws: v.optional(v.number()),
+      // Shop & economy
+      shopItems: v.optional(v.array(v.string())),
+      // Daily quests
+      dailyQuestProgress: v.optional(v.object({
+        date: v.string(),
+        completed: v.array(v.string()),
+        progress: v.record(v.string(), v.number()),
+      })),
+      // Streak rewards
+      streakRewardsClaimed: v.optional(v.array(v.number())),
     })
       .index("by_user", ["userId"])
       .index("by_xp", ["xp"]),

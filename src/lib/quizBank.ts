@@ -19,8 +19,8 @@ export interface QuizQuestion {
 const q = (
   id: string,
   question: string,
-  options: [string, string, string, string],
-  answer: 0 | 1 | 2 | 3,
+  options: [string, string, string, string] | [string, string, string, string, string] | [string, string, string, string, string, string],
+  answer: number,
   explain: string,
 ): QuizQuestion => ({ id, q: question, options, answer, explain });
 
