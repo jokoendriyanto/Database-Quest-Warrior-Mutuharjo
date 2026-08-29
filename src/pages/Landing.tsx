@@ -11,6 +11,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { AppFooter } from "@/components/AppFooter";
 import { WORLDS } from "@/lib/curriculum";
+import {
+  LottieAnimation,
+  XpGainAnimation,
+  SparkleAnimation,
+} from "@/components/ui/lottie-animation";
 
 const fadeUp = {
   initial: { opacity: 0, y: 16 },
@@ -87,7 +92,22 @@ export default function Landing() {
           </div>
 
           {/* kanan: product UI beneran, bukan ilustrasi abstrak */}
-          <motion.div {...fadeUp} className="panel-raised overflow-hidden">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="panel-raised relative overflow-hidden"
+          >
+            {/* Lottie accent — floating SQL quest animation */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 1.2, duration: 0.6, ease: "easeOut" }}
+              className="absolute -right-4 -top-4 z-10 size-20 opacity-60 sm:size-28 sm:opacity-80"
+            >
+              <LottieAnimation animation="sql-quest" size="full" loop speed={0.8} />
+            </motion.div>
             {/* editor bar */}
             <div className="flex items-center justify-between border-b border-border px-4 py-2">
               <span className="font-mono text-xs text-muted-foreground">challenge.sql</span>
@@ -154,13 +174,13 @@ INNER JOIN classes c
 
         {/* XP toast — microinteraction identitas */}
         <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.9, duration: 0.25 }}
-          className="absolute bottom-6 right-6 hidden rounded-md border border-border bg-card px-3 py-2 shadow-sm lg:block"
+          initial={{ opacity: 0, y: 8, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ delay: 0.9, duration: 0.35, ease: "easeOut" }}
+          className="absolute bottom-6 right-6 hidden items-center gap-2 rounded-lg border border-border bg-card px-4 py-3 shadow-md lg:flex"
         >
-          <p className="font-mono text-sm font-bold text-success">+100 XP</p>
-          <p className="text-[11px] text-muted-foreground">INNER JOIN complete</p>
+          <XpGainAnimation amount={100} />
+          <span className="text-[11px] text-muted-foreground">INNER JOIN complete</span>
         </motion.div>
       </section>
 
@@ -172,37 +192,42 @@ INNER JOIN classes c
             <h2 className="mt-2 max-w-xl text-2xl font-extrabold tracking-tight sm:text-3xl">
               Satu loop. Diulang sampai jadi kebiasaan.
             </h2>
-          </motion.div>
-
-          <ol className="mt-10 grid gap-px overflow-hidden rounded-lg border border-border bg-border md:grid-cols-4">
-            {[
+          </motion.div>            <ol className="mt-10 grid gap-px overflow-hidden rounded-lg border border-border bg-border md:grid-cols-4">
+            {([
               {
                 num: "01",
                 title: "PAHAMI",
                 body: "Primary Key itu kayak NIS — nggak boleh kembar. Teori singkat, analogi yang masuk akal, 3–8 menit.",
                 sample: "SELECT * FROM students;",
+                anim: "database-loading" as const,
               },
               {
                 num: "02",
                 title: "COBA",
                 body: "Langsung praktik di playground. Query dijalankan sungguhan — error pun jadi bahan belajar.",
                 sample: "CREATE TABLE scores (...);",
+                anim: "code-running" as const,
               },
               {
                 num: "03",
                 title: "PECAHKAN",
                 body: "Kasus nyata: data TU berantakan, kantin butuh laporan omzet. Bereskan pakai SQL.",
                 sample: "GROUP BY product_id;",
+                anim: "star-burst" as const,
               },
               {
                 num: "04",
                 title: "BATTLE",
                 body: "Uji skill lawan bot atau teman sekelas. Yang benar lebih dulu, menang.",
                 sample: "rating 1284 → GOLD II",
+                anim: "sword-clash" as const,
               },
-            ].map((s) => (
+            ] as const).map((s) => (
               <motion.li key={s.num} {...fadeUp} className="relative bg-card p-6">
-                <span className="font-mono text-xs text-primary">{s.num}</span>
+                <div className="flex items-start justify-between">
+                  <span className="font-mono text-xs text-primary">{s.num}</span>
+                  <LottieAnimation animation={s.anim} size="sm" className="opacity-70" />
+                </div>
                 <h3 className="mt-2 font-mono text-sm font-bold tracking-widest">{s.title}</h3>
                 <p className="mt-2 min-h-16 text-sm leading-relaxed text-muted-foreground">{s.body}</p>
                 <pre className="mt-3 rounded-md border border-border bg-muted/60 px-3 py-2 font-mono text-[11px] text-muted-foreground">
@@ -356,7 +381,17 @@ LIMIT 5;`}
             </p>
           </motion.div>
 
-          <motion.div {...fadeUp} className="panel-raised overflow-hidden">
+          <motion.div {...fadeUp} className="panel-raised relative overflow-hidden">
+            {/* Sword clash Lottie accent */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.5 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.3, duration: 0.5, ease: "easeOut" }}
+              className="absolute -right-2 -top-2 z-10 size-16 opacity-50"
+            >
+              <LottieAnimation animation="sword-clash" size="full" loop speed={0.6} />
+            </motion.div>
             <div className="grid gap-6 p-6 sm:grid-cols-[auto_1fr]">
               <div>
                 <p className="kicker">Battle rating</p>
@@ -457,8 +492,8 @@ LIMIT 5;`}
               ))}
               <div className="flex-1">
                 <p className="mb-3 font-mono text-[10px] font-bold tracking-widest text-muted-foreground">FINAL</p>
-                <div className="panel grid place-items-center border-dashed py-8">
-                  <Trophy className="size-5 text-muted-foreground" />
+                <div className="panel relative grid place-items-center border-dashed py-8">
+                  <LottieAnimation animation="trophy-shine" size="md" className="opacity-70" />
                   <p className="mt-2 font-mono text-xs text-muted-foreground">champion?</p>
                 </div>
               </div>
@@ -532,7 +567,17 @@ LIMIT 5;`}
       {/* ------------------------------ FINAL CTA ---------------------------- */}
       <section className="border-b border-border">
         <div className="mx-auto max-w-[1440px] px-4 py-16 sm:px-6">
-          <motion.div {...fadeUp} className="max-w-2xl">
+          <motion.div {...fadeUp} className="relative max-w-2xl">
+            {/* CTA Lottie accent */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.7 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.4, duration: 0.6 }}
+              className="absolute -right-6 -top-6 size-20 opacity-50 sm:-right-10 sm:-top-10 sm:size-28"
+            >
+              <LottieAnimation animation="sql-quest" size="full" loop speed={0.7} />
+            </motion.div>
             <pre className="caret-blink font-mono text-sm text-muted-foreground">
 {`-- satu query sederhana cukup untuk mulai`}
             </pre>
