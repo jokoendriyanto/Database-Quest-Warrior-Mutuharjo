@@ -82,7 +82,10 @@ export default function Learn() {
                 )}
               >
                 {status === "current" ? (
-                  <div className="flex items-center gap-1"><SparkleAnimation /><Play className="size-4 fill-current" aria-label="Current" /></div>
+                  <span className="relative">
+                    <Play className="size-4 fill-current" aria-label="Current" />
+                    <SparkleAnimation className="absolute -right-2 -top-2 size-5" />
+                  </span>
                 ) : status === "completed" ? (
                   <Check className="size-4" aria-hidden />
                 ) : locked ? (
