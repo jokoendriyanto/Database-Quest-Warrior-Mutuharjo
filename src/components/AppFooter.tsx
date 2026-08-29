@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { Heart } from "lucide-react";
+import { LottieAnimation } from "@/components/ui/lottie-animation";
 
 /**
  * Footer wajib — simple border-top, bukan giant footer.
@@ -16,6 +17,7 @@ export function AppFooter() {
             <span className="text-sm font-extrabold tracking-tight">
               Database Quest Warrior<span className="text-muted-foreground">: Mutuharjo</span>
             </span>
+            <LottieAnimation animation="sql-quest" size="xs" className="opacity-40" />
           </p>
           <p className="mt-2 max-w-xs text-sm leading-relaxed text-muted-foreground">
             Learn Database. Solve Problems. Compete. Master.

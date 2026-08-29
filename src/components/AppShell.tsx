@@ -24,6 +24,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { levelProgress, rankFromLevel } from "@/lib/game";
 import { cn } from "@/lib/utils";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
+import { SparkleAnimation } from "@/components/ui/lottie-animation";
 
 interface NavItem {
   to: string;
@@ -227,7 +228,10 @@ export function AppShell() {
         <nav className="flex flex-1 flex-col overflow-y-auto px-3 pb-3" aria-label="Navigasi utama">
           {NAV_GROUPS.map(({ group, items }) => (
             <div key={group} className="mb-4">
-              <p className="kicker mb-1 px-3">{group}</p>
+              <p className="kicker mb-1 flex items-center gap-1 px-3">
+                {group}
+                <SparkleAnimation className="size-3 opacity-50" />
+              </p>
               <ul className="space-y-0.5">
                 {items.map(({ to, label, icon: Icon }) => (
                   <li key={to}>

@@ -3,6 +3,7 @@ import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Camera, Loader2, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SparkleAnimation } from "@/components/ui/lottie-animation";
 
 interface AvatarUploadProps {
   /** Current avatar image URL (from Convex storage) or null */
@@ -168,6 +169,11 @@ export function AvatarUpload({
         onChange={handleInputChange}
         className="hidden"
       />
+
+      {/* Upload success sparkle */}
+      {!uploading && !error && displayUrl && (
+        <SparkleAnimation className="size-4 opacity-60" />
+      )}
 
       {/* Status text */}
       {uploading && (

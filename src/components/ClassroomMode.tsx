@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { Loader2, Users, Copy, Check, Play, Square, AlertCircle } from "lucide-react";
-import { LottieAnimation } from "@/components/ui/lottie-animation";
+import { LottieAnimation, XpGainAnimation } from "@/components/ui/lottie-animation";
 import { playBattleWin, playBattleLose } from "@/lib/sounds";
 
 interface Props {
@@ -254,8 +254,12 @@ export default function ClassroomMode({ role }: Props) {
       )}
 
       {result?.correct && (
-        <div className="mt-3 rounded-md border border-success/40 bg-success/10 p-3">
-          <p className="text-sm font-bold text-success">✓ Benar! {(result.elapsedMs / 1000).toFixed(1)}s · +{result.xpEarned} XP</p>
+        <div className="mt-3 flex items-center gap-3 rounded-md border border-success/40 bg-success/10 p-3">
+          <LottieAnimation animation="check-mark" size="sm" loop={false} />
+          <div>
+            <p className="text-sm font-bold text-success">Benar! {(result.elapsedMs / 1000).toFixed(1)}s</p>
+            <XpGainAnimation amount={result.xpEarned} />
+          </div>
         </div>
       )}
 
