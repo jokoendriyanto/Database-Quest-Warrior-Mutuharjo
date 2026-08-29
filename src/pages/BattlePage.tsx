@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import { Link } from "react-router";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -320,15 +321,17 @@ export default function BattlePage() {
               Query belum sesuai — cek hint di lesson terkait, lalu rematch.
             </p>
           )}
-          <div className="flex items-center gap-2">
-            {result.correct && <SparkleAnimation />}
-            <p className="mt-3 whitespace-pre-line text-sm text-secondary-foreground">{result.victoryCopy}</p>
-          </div>
-          {result.xpAwarded > 0 && (
-            <div className="mt-2">
-              <XpGainAnimation amount={result.xpAwarded} />
+          <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 200, damping: 12 }}>
+            <div className="flex items-center gap-2">
+              {result.correct && <SparkleAnimation className="size-6" />}
+              <p className="mt-3 whitespace-pre-line text-sm text-secondary-foreground">{result.victoryCopy}</p>
             </div>
-          )}
+            {result.xpAwarded > 0 && (
+              <div className="mt-2">
+                <XpGainAnimation amount={result.xpAwarded} />
+              </div>
+            )}
+          </motion.div>
         </div>
 
         <div className="mt-5 flex gap-2">

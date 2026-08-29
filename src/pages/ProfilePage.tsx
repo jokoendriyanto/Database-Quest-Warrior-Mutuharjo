@@ -148,7 +148,7 @@ export default function ProfilePage() {
           ].map(({ v, l, c }) => (
             <div key={l} className="panel px-3 py-3 text-center">
               <div className={cn("font-mono text-2xl font-bold tabular-nums", c, "flex items-center justify-center gap-1")}>
-                {l === "STREAK" && stats.streak > 0 && <LottieAnimation animation="fire-streak" size="xs" loop />}
+                {l === "STREAK" && stats.streak > 0 && <LottieAnimation animation="fire-streak" size="sm" loop />}
                 <span>{v}</span>
               </div>
               <p className="mt-1 font-mono text-[9px] tracking-wider text-muted-foreground">{l}</p>
@@ -350,7 +350,7 @@ export default function ProfilePage() {
                       <span className="relative inline-block">
                         {b.icon}
                         <span className="absolute -bottom-0.5 -right-0.5">
-                          <LottieAnimation animation="check-mark" size="xs" loop={false} />
+                          <LottieAnimation animation="check-mark" size="sm" loop={false} />
                         </span>
                       </span>
                     ) : (

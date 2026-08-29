@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Flame, Gift, Lock, Check } from "lucide-react";
+import { Gift, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
@@ -15,7 +15,7 @@ export default function StreakRewards() {
   return (
     <div className="rounded-xl border border-border bg-card p-4">
       <div className="mb-3 flex items-center gap-2">
-        <Flame className="size-4 text-battle" />
+        <StreakFireAnimation days={data.currentStreak} />
         <h3 className="text-xs font-bold uppercase tracking-wider">Streak Rewards</h3>
       </div>
 
@@ -50,7 +50,7 @@ export default function StreakRewards() {
               <div className="mt-2">
                 {claimed ? (
                   <div className="flex items-center justify-center gap-1 text-[10px] font-bold text-success">
-                    <Check className="size-3" /> Klaimed
+                    <LottieAnimation animation="check-mark" size="xs" loop={false} /> Klaimed
                   </div>
                 ) : reached ? (
                   <Button

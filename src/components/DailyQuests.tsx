@@ -1,6 +1,6 @@
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Coins, CheckCircle, Circle, Flame } from "lucide-react";
+import { Coins, CheckCircle, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { StreakFireAnimation, LottieAnimation } from "@/components/ui/lottie-animation";
@@ -18,7 +18,7 @@ export default function DailyQuests() {
     <div className="rounded-xl border border-border bg-card p-4">
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Flame className="size-4 text-battle" />
+          <LottieAnimation animation="fire-streak" size="xs" loop />
           <h3 className="text-xs font-bold uppercase tracking-wider">Quest Harian</h3>
         </div>
         <span className="text-[10px] font-mono text-muted-foreground">
@@ -66,9 +66,10 @@ export default function DailyQuests() {
       </div>
 
       {completedCount === total && total > 0 && (
-        <div className="mt-3 rounded-lg bg-success/10 px-3 py-2 text-center text-xs font-bold text-success">
-          🎉 Semua quest selesai hari ini! Besok lagi ya!
-        </div>
+        <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="mt-3 flex items-center justify-center gap-2 rounded-lg bg-success/10 px-3 py-2 text-xs font-bold text-success">
+          <LottieAnimation animation="check-mark" size="xs" loop={false} />
+          Semua quest selesai hari ini! Besok lagi ya!
+        </motion.div>
       )}
     </div>
   );

@@ -256,9 +256,9 @@ SELECT * FROM journey WHERE student = '${firstName.toLowerCase()}';`}
               ].map((r) => (
                 <li key={r.title} className="flex items-start gap-3 py-3.5 first:pt-0 last:pb-0">
                   <span className="font-mono text-xs text-muted-foreground">{r.num}</span>
-                  {r.num === "01" && <LottieAnimation animation="xp-gain" size="xs" loop={false} />}
-                  {r.num === "02" && <LottieAnimation animation="fire-streak" size="xs" />}
-                  {r.num === "03" && <LottieAnimation animation="sword-clash" size="xs" loop={false} />}
+                  {r.num === "01" && <LottieAnimation animation="xp-gain" size="sm" loop={false} />}
+                  {r.num === "02" && <LottieAnimation animation="fire-streak" size="sm" />}
+                  {r.num === "03" && <LottieAnimation animation="sword-clash" size="sm" loop={false} />}
                   <div>
                     <p className="text-sm font-bold">{r.title}</p>
                     <p className="text-xs leading-relaxed text-muted-foreground">{r.text}</p>
@@ -273,7 +273,7 @@ SELECT * FROM journey WHERE student = '${firstName.toLowerCase()}';`}
                   <Loader2 className="size-4 animate-spin" />
                 ) : (
                   <>
-                    <LottieAnimation animation="trophy-shine" size="xs" loop /> Masuk ke Dashboard
+                    <LottieAnimation animation="trophy-shine" size="sm" loop /> Masuk ke Dashboard
                   </>
                 )}
               </Button>

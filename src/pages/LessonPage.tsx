@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import { Link, useParams } from "react-router";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -318,15 +319,15 @@ function QuizSection({
           {result.passed ? "LULUS ✓" : "BELUM LULUS"} · SKOR {result.score}/{result.total}
         </legend>
         <div className="flex items-center gap-3">
-          {result.passed && <LottieAnimation animation="quiz-correct" size="sm" loop={false} />}
-          {!result.passed && <LottieAnimation animation="quiz-wrong" size="sm" loop={false} />}
+          {result.passed && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 300, damping: 15 }}><LottieAnimation animation="quiz-correct" size="md" loop={false} /></motion.div>}
+          {!result.passed && <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 300, damping: 15 }}><LottieAnimation animation="quiz-wrong" size="md" loop={false} /></motion.div>}
           <p className="text-sm text-secondary-foreground">
             {result.passed
               ? "Mantap — latihan lesson ini terbuka. "
               : `Butuh benar ≥ ${Math.ceil(result.total * 0.75)} dari ${result.total}. Bedah jawabanmu di bawah, lalu coba lagi dengan soal baru. `}
           </p>
         </div>
-        {result.passed && <XpGainAnimation amount={result.total * 20} />}
+        {result.passed && <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}><XpGainAnimation amount={result.total * 20} /></motion.div>}
         <ul className="mt-3 space-y-3">
           {result.results.map((r, i) => (
             <li key={i} className="rounded-md border border-border bg-background p-3">

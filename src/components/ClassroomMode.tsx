@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { Loader2, Users, Copy, Check, Play, Square, AlertCircle } from "lucide-react";
-import { QueryRunningAnimation } from "@/components/ui/lottie-animation";
+import { LottieAnimation } from "@/components/ui/lottie-animation";
 import { playBattleWin, playBattleLose } from "@/lib/sounds";
 
 interface Props {
@@ -173,7 +173,7 @@ export default function ClassroomMode({ role }: Props) {
           <h3 className="text-sm font-bold uppercase tracking-wide">Classroom Mode</h3>
         </div>
         <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
-          <QueryRunningAnimation />
+          <LottieAnimation animation="code-running" size="md" />
           Memuat sesi kelas...
         </div>
       </section>

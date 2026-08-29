@@ -47,8 +47,8 @@ export default function NotFound() {
         >
           {/* mascot */}
           <div className="relative mx-auto mb-8">
-            <div className="mx-auto flex size-28 items-center justify-center rounded-2xl border border-border bg-card text-6xl shadow-lg">
-              🤖
+            <div className="mx-auto flex size-28 items-center justify-center rounded-2xl border border-border bg-card shadow-lg">
+              <LottieAnimation animation="error-oops" size="lg" loop={false} />
             </div>
             {/* floating query error tag */}
             <div className="absolute -right-2 -bottom-2 rounded-lg border border-border bg-card px-3 py-1.5 font-mono text-[10px] font-semibold tracking-wider text-destructive shadow-md">

@@ -28,7 +28,7 @@ import { cn } from "@/lib/utils";
 import { Coins } from "lucide-react";
 import DailyQuests from "@/components/DailyQuests";
 import { Link as LinkIcon } from "lucide-react";
-import { StreakFireAnimation, XpGainAnimation, CoinAnimation, SparkleAnimation } from "@/components/ui/lottie-animation";
+import { StreakFireAnimation, CoinAnimation, SparkleAnimation } from "@/components/ui/lottie-animation";
 
 /** Sapaan sesuai jam — kecil, tapi bikin dashboard terasa hidup. */
 function greeting(): string {
