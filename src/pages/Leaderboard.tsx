@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { DatabaseLoadingAnimation } from "@/components/ui/lottie-animation";
+import { DatabaseLoadingAnimation, LottieAnimation } from "@/components/ui/lottie-animation";
 
 type Tab = "global" | "class" | "ranked";
 type Semester = "active" | "s1" | "s2" | "all";
@@ -157,12 +157,17 @@ export default function Leaderboard() {
                     isMe ? "-mx-3 rounded-md bg-accent/40 px-3" : ""
                   }`}
                 >
-                  <span
-                    className={`font-mono tabular-nums ${
-                      top3 ? "text-lg font-bold text-foreground" : "text-xs text-muted-foreground"
-                    }`}
-                  >
-                    {String(pos).padStart(2, "0")}
+                  <span className="flex items-center gap-1">
+                    {pos === 1 && <LottieAnimation animation="trophy-shine" size="xs" className="opacity-80" />}
+                    {pos === 2 && <LottieAnimation animation="star-burst" size="xs" className="opacity-60" />}
+                    {pos === 3 && <LottieAnimation animation="sparkle" size="xs" className="opacity-60" />}
+                    <span
+                      className={`font-mono tabular-nums ${
+                        top3 ? "text-lg font-bold text-foreground" : "text-xs text-muted-foreground"
+                      }`}
+                    >
+                      {String(pos).padStart(2, "0")}
+                    </span>
                   </span>
                   <span className="flex min-w-0 items-center gap-2">
                     <span aria-hidden className="text-base leading-none">{e.avatarEmoji}</span>

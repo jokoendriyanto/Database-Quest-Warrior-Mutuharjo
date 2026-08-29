@@ -6,7 +6,7 @@ import { LESSON_MAP } from "@/lib/curriculum";
 import { schoolDb, kantinDb } from "@/lib/data/datasets";
 import { runSql, type RunResult, type Database as SqlDatabase } from "@/lib/sql/engine";
 import { Button } from "@/components/ui/button";
-import { DatabaseLoadingAnimation } from "@/components/ui/lottie-animation";
+import { DatabaseLoadingAnimation, LottieAnimation, XpGainAnimation } from "@/components/ui/lottie-animation";
 import { Textarea } from "@/components/ui/textarea";
 import {
   ChevronDown,
@@ -286,16 +286,21 @@ function ChallengeCard({ challenge: c }: { challenge: Challenge }) {
           )}
 
           {result && (
-            <p
+            <div
               className={cn(
-                "rounded-md border px-3 py-2 text-sm",
+                "flex items-center gap-3 rounded-md border px-3 py-2 text-sm",
                 result.correct
                   ? "border-success/30 bg-success/10 text-success"
                   : "border-warning/40 bg-warning/10 text-warning",
               )}
             >
-              {result.message}
-            </p>
+              <LottieAnimation
+                animation={result.correct ? "check-mark" : "error-oops"}
+                size="sm"
+                loop={false}
+              />
+              <span>{result.message}</span>
+            </div>
           )}
 
           {preview && (

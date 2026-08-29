@@ -7,6 +7,10 @@ import { runSql, SqlError } from "@/lib/sql/engine";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import {
+  LottieAnimation,
+  XpGainAnimation,
+} from "@/components/ui/lottie-animation";
 
 function fmt(sec: number): string {
   return `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, "0")}`;
@@ -210,6 +214,9 @@ export default function DuelArena() {
     return (
       <section className="mt-8" aria-label="Duel menunggu lawan">
         <div className="rounded-lg border border-border bg-card p-6 text-center">
+          <div className="flex justify-center">
+            <LottieAnimation animation="sword-clash" size="md" className="opacity-70" />
+          </div>
           <p className="kicker">MENUNGGU LAWAN</p>
           <p className="mt-4 font-mono text-5xl font-bold tracking-[0.3em] text-primary">
             {duel.code}
@@ -252,6 +259,13 @@ export default function DuelArena() {
           >
             {outcome.draw ? "SERI" : outcome.won ? "VICTORY" : "DEFEAT"}
           </p>
+          <div className="mt-2 flex justify-center">
+            <LottieAnimation
+              animation={outcome.won ? "battle-victory" : outcome.draw ? "star-burst" : "battle-defeat"}
+              size="md"
+              loop={false}
+            />
+          </div>
           <div className="mt-4 flex items-center gap-6">
             <span aria-hidden className="text-3xl">{duel.host.emoji}</span>
             <div className="min-w-0 flex-1">
@@ -270,7 +284,9 @@ export default function DuelArena() {
             <span aria-hidden className="text-3xl">{duel.guest?.emoji ?? "🦉"}</span>
           </div>
           {outcome.xpAwarded > 0 && (
-            <p className="mt-4 font-mono text-sm font-bold text-primary">+{outcome.xpAwarded} XP</p>
+            <div className="mt-4">
+              <XpGainAnimation amount={outcome.xpAwarded} />
+            </div>
           )}
         </div>
         <div className="mt-4">

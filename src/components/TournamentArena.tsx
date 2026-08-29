@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { LottieAnimation } from "@/components/ui/lottie-animation";
 
 interface BracketMatchView {
   round: number;
@@ -108,7 +109,7 @@ export default function TournamentArena({ role }: { role: string }) {
           )}
           {tournaments.map((t) => (
             <li key={t.id} className="flex items-center gap-3 py-3">
-              <span aria-hidden className="text-lg">🏆</span>
+              <LottieAnimation animation="trophy-shine" size="sm" className="opacity-80" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold">{t.name}</p>
                 <p className="font-mono text-[11px] text-muted-foreground">

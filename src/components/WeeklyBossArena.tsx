@@ -6,6 +6,11 @@ import { runSql, SqlError } from "@/lib/sql/engine";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Loader2, Trophy, Clock, Users, Zap } from "lucide-react";
+import {
+  LottieAnimation,
+  DatabaseLoadingAnimation,
+  XpGainAnimation,
+} from "@/components/ui/lottie-animation";
 
 const DIFFICULTY_COLORS: Record<string, string> = {
   easy: "text-success border-success/40 bg-success/10",
@@ -50,7 +55,11 @@ export default function WeeklyBossArena() {
   };
 
   if (boss === undefined) {
-    return <div className="panel h-32 animate-pulse" />;
+    return (
+      <section className="panel p-5">
+        <DatabaseLoadingAnimation text="Memuat weekly boss..." />
+      </section>
+    );
   }
 
   if (!boss) {
@@ -71,7 +80,7 @@ export default function WeeklyBossArena() {
     <section className="panel p-5 animate-fade-in">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Trophy className="size-4 text-warning" strokeWidth={1.75} />
+          <LottieAnimation animation="trophy-shine" size="sm" className="opacity-80" />
           <h3 className="text-sm font-bold uppercase tracking-wide">Weekly Boss</h3>
         </div>
         <div className="flex items-center gap-2">
@@ -109,7 +118,13 @@ export default function WeeklyBossArena() {
       {boss.mySubmission && (
         <div className={cn("mt-4 rounded-md border p-3", boss.mySubmission.correct ? "border-success/40 bg-success/10" : "border-border bg-secondary/40")}>
           {boss.mySubmission.correct ? (
-            <p className="text-sm font-bold text-success">✓ Sudah diselesaikan — {(boss.mySubmission.elapsedMs / 1000).toFixed(1)}s · +{boss.mySubmission.xpEarned} XP</p>
+            <div className="flex items-center gap-3">
+              <LottieAnimation animation="battle-victory" size="sm" loop={false} />
+              <div>
+                <p className="text-sm font-bold text-success">Sudah diselesaikan — {(boss.mySubmission.elapsedMs / 1000).toFixed(1)}s</p>
+                <XpGainAnimation amount={boss.mySubmission.xpEarned} />
+              </div>
+            </div>
           ) : (
             <p className="text-sm text-muted-foreground">Belum berhasil — coba lagi!</p>
           )}

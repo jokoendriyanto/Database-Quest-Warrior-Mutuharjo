@@ -1,6 +1,7 @@
 import { NavLink } from "react-router";
 import { Home, BookOpen, Swords, Trophy, User } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SparkleAnimation } from "@/components/ui/lottie-animation";
 
 const NAV_ITEMS = [
   { to: "/dashboard", label: "Home", icon: Home },
@@ -32,13 +33,16 @@ export function MobileBottomNav() {
           >
             {({ isActive }) => (
               <>
-                <Icon
-                  className={cn(
-                    "size-5 transition-all",
-                    isActive && "scale-110",
-                  )}
-                  strokeWidth={isActive ? 2.5 : 1.75}
-                />
+                <span className="relative">
+                  <Icon
+                    className={cn(
+                      "size-5 transition-all",
+                      isActive && "scale-110",
+                    )}
+                    strokeWidth={isActive ? 2.5 : 1.75}
+                  />
+                  {isActive && <SparkleAnimation className="absolute -right-2.5 -top-2 size-3.5" />}
+                </span>
                 <span>{label}</span>
               </>
             )}

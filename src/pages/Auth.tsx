@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2, UserRoundPen, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LottieAnimation, SparkleAnimation } from "@/components/ui/lottie-animation";
 
 function resolveRedirectAfterAuth(returnTo: string | null, fallback = "/dashboard") {
   if (returnTo?.startsWith("/") && !returnTo.startsWith("//")) return returnTo;
@@ -181,6 +182,10 @@ function AuthInner() {
         </div>
 
         <div className="relative max-w-lg">
+          {/* Lottie accent — SQL quest floating animation */}
+          <div className="absolute -right-4 -top-4 size-16 opacity-50 sm:size-20">
+            <LottieAnimation animation="sql-quest" size="full" loop speed={0.7} />
+          </div>
           <p className="kicker">Query hari ini</p>
           <pre className="caret-blink mt-4 rounded-lg border border-border bg-card p-5 font-mono text-[15px] leading-7 text-foreground">
 {`SELECT *
@@ -193,7 +198,7 @@ WHERE effort > excuse;`}
             <br />
             Pecahkan kasus.
             <br />
-            Adu skill.
+            Adu skill. <SparkleAnimation className="ml-1 inline-block size-5 align-middle" />
           </p>
           <ul className="mt-6 space-y-1.5 text-sm text-muted-foreground">
             <li><span className="mr-2 font-mono text-xs text-primary">01</span>Pelajaran singkat dengan analogi yang masuk akal</li>
