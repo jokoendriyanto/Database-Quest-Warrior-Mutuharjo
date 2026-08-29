@@ -12,6 +12,11 @@ import {
 import { BADGES, WORLD_SKILL, RANKS, levelProgress, tierFromWins } from "@/lib/game";
 import { cn } from "@/lib/utils";
 import { AvatarUpload } from "@/components/AvatarUpload";
+import {
+  LottieAnimation,
+  StreakFireAnimation,
+  SparkleAnimation,
+} from "@/components/ui/lottie-animation";
 
 const DAY_LABELS = ["MIN", "SEN", "SEL", "RAB", "KAM", "JUM", "SAB"];
 
@@ -33,7 +38,9 @@ export default function ProfilePage() {
   if (!data) {
     return (
       <div className="mx-auto max-w-4xl space-y-4" aria-busy>
-        <div className="panel h-40 animate-pulse" />
+        <div className="panel flex items-center justify-center h-40">
+          <LottieAnimation animation="database-loading" size="lg" />
+        </div>
         <div className="panel h-24 animate-pulse" />
       </div>
     );
@@ -87,9 +94,10 @@ export default function ProfilePage() {
             <p className="mt-0.5 truncate text-sm text-muted-foreground">
               {user.className ? `${user.className} · ` : ""}PPLG Mutuharjo
             </p>
-            <div className="mt-2.5 flex flex-wrap gap-1.5">
-              <span className="rounded border border-warning/40 bg-warning/10 px-2 py-0.5 font-mono text-[10px] font-bold tracking-wider text-warning">
+            <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+              <span className="relative rounded border border-warning/40 bg-warning/10 px-2 py-0.5 font-mono text-[10px] font-bold tracking-wider text-warning">
                 {rank.emoji} {rank.name.toUpperCase()}
+                <SparkleAnimation className="absolute -right-1 -top-1 size-4" />
               </span>
               <span className="rounded border border-primary/40 bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold tracking-wider text-primary">
                 LEVEL {level}
@@ -139,7 +147,10 @@ export default function ProfilePage() {
             { v: `${duelWinRate}%`, l: "WIN RATE DUEL", c: "text-battle" },
           ].map(({ v, l, c }) => (
             <div key={l} className="panel px-3 py-3 text-center">
-              <p className={cn("font-mono text-2xl font-bold tabular-nums", c)}>{v}</p>
+              <div className={cn("font-mono text-2xl font-bold tabular-nums", c, "flex items-center justify-center gap-1")}>
+                {l === "STREAK" && stats.streak > 0 && <LottieAnimation animation="fire-streak" size="xs" loop />}
+                <span>{v}</span>
+              </div>
               <p className="mt-1 font-mono text-[9px] tracking-wider text-muted-foreground">{l}</p>
             </div>
           ))}
@@ -185,8 +196,8 @@ export default function ProfilePage() {
       <section className="panel p-4 sm:p-5" aria-labelledby="act-h">
         <div className="flex items-baseline justify-between gap-2">
           <h2 id="act-h" className="kicker">AKTIVITAS 7 HARI TERAKHIR</h2>
-          <p className="font-mono text-[10px] text-muted-foreground">
-            STREAK: {stats.streak} HARI · BEST: {stats.longestStreak}
+          <p className="font-mono text-[10px] text-muted-foreground flex items-center gap-1">
+            STREAK: {stats.streak > 0 ? <StreakFireAnimation days={stats.streak} /> : `${stats.streak} HARI`} · BEST: {stats.longestStreak}
           </p>
         </div>
         <ul className="mt-3 grid grid-cols-7 gap-1.5 sm:gap-2">
@@ -211,7 +222,11 @@ export default function ProfilePage() {
                 </span>
                 {total > 0 ? (
                   <>
-                    <span className="text-base leading-none" aria-hidden>🔥</span>
+                    {isToday ? (
+                      <LottieAnimation animation="fire-streak" size="xs" loop />
+                    ) : (
+                      <span className="text-base leading-none" aria-hidden>🔥</span>
+                    )}
                     <span className="font-mono text-[10px] font-bold tabular-nums">
                       {total} aksi
                     </span>
@@ -261,11 +276,13 @@ export default function ProfilePage() {
 
       {/* ================= SKILL PER DUNIA ================= */}
       <section aria-labelledby="skills-h">
-        <h2 id="skills-h" className="kicker mb-3">SKILL PER DUNIA</h2>
-        {data.skillStats.length === 0 ? (
-          <div className="panel px-4 py-5 text-center font-mono text-xs text-muted-foreground">
-            belum ada data — skill terpetakan otomatis dari latihan yang kamu kerjakan
-          </div>
+        <h2 id="skills-h" className="kicker mb-3">SKILL PER DUNIA</h2>          {data.skillStats.length === 0 ? (
+            <div className="panel flex flex-col items-center gap-3 px-4 py-8 text-center">
+              <LottieAnimation animation="empty-box" size="md" />
+              <p className="font-mono text-xs text-muted-foreground">
+                belum ada data — skill terpetakan otomatis dari latihan yang kamu kerjakan
+              </p>
+            </div>
         ) : (
           <ul className="panel space-y-3 px-4 py-4">
             {data.skillStats.map((s) => (
@@ -293,9 +310,22 @@ export default function ProfilePage() {
 
       {/* ================= BADGES ================= */}
       <section aria-labelledby="badges-h">
-        <h2 id="badges-h" className="kicker mb-3">
-          WARRIOR BADGES · {earned.size}/{BADGES.length}
-        </h2>
+        <div className="flex items-center gap-3 mb-3">
+          <h2 id="badges-h" className="kicker">
+            WARRIOR BADGES · {earned.size}/{BADGES.length}
+          </h2>
+          <div className="flex-1">
+            <div className="inset-track h-1.5">
+              <div
+                className="h-full bg-warning transition-all"
+                style={{ width: `${Math.round((earned.size / BADGES.length) * 100)}%` }}
+              />
+            </div>
+          </div>
+          <span className="font-mono text-[10px] text-muted-foreground">
+            {Math.round((earned.size / BADGES.length) * 100)}%
+          </span>
+        </div>
         <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
           {BADGES.map((b) => {
             const has = earned.has(b.id);
@@ -303,24 +333,44 @@ export default function ProfilePage() {
               <li
                 key={b.id}
                 className={cn(
-                  "px-4 py-3.5",
-                  has ? "panel" : "border border-dashed border-border opacity-60",
+                  "relative overflow-hidden px-4 py-3.5 transition-all",
+                  has
+                    ? "panel hover:shadow-lg hover:shadow-warning/10"
+                    : "border border-dashed border-border opacity-60",
                 )}
               >
-                <p className="text-xl leading-none" aria-hidden>
-                  {has ? b.icon : <Lock className="size-4 text-muted-foreground" aria-label="Terkunci" />}
-                </p>
-                <p
-                  className={cn(
-                    "mt-2 text-[13px] font-bold uppercase tracking-wide",
-                    !has && "text-muted-foreground",
-                  )}
-                >
-                  {b.label}
-                </p>
-                <p className="mt-0.5 font-mono text-[10px] leading-snug text-muted-foreground">
-                  {b.desc}
-                </p>
+                {has && (
+                  <div className="pointer-events-none absolute right-1 top-1">
+                    <SparkleAnimation className="size-5" />
+                  </div>
+                )}
+                <div className="relative">
+                  <p className="text-xl leading-none" aria-hidden>
+                    {has ? (
+                      <span className="relative inline-block">
+                        {b.icon}
+                        <span className="absolute -bottom-0.5 -right-0.5">
+                          <LottieAnimation animation="check-mark" size="xs" loop={false} />
+                        </span>
+                      </span>
+                    ) : (
+                      <span className="relative inline-block">
+                        <Lock className="size-4 text-muted-foreground" aria-label="Terkunci" />
+                      </span>
+                    )}
+                  </p>
+                  <p
+                    className={cn(
+                      "mt-2 text-[13px] font-bold uppercase tracking-wide",
+                      !has && "text-muted-foreground",
+                    )}
+                  >
+                    {b.label}
+                  </p>
+                  <p className="mt-0.5 font-mono text-[10px] leading-snug text-muted-foreground">
+                    {b.desc}
+                  </p>
+                </div>
               </li>
             );
           })}
