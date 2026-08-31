@@ -12,12 +12,14 @@ export function AppFooter() {
       <div className="mx-auto grid max-w-[1440px] gap-8 px-4 py-8 sm:px-6 md:grid-cols-[2fr_1fr_1fr]">
         {/* brand */}
         <div>
-          <p className="flex items-baseline gap-2">
+          <p className="group flex items-baseline gap-2">
             <span className="font-mono text-sm font-bold text-primary">dq:</span>
             <span className="text-sm font-extrabold tracking-tight">
               Database Quest Warrior<span className="text-muted-foreground">: Mutuharjo</span>
             </span>
-            <LottieAnimation animation="sql-quest" size="xs" className="opacity-40" />
+            <span className="opacity-30 transition-opacity duration-300 group-hover:opacity-70">
+              <LottieAnimation animation="sql-quest" size="sm" className="-mt-0.5" />
+            </span>
           </p>
           <p className="mt-2 max-w-xs text-sm leading-relaxed text-muted-foreground">
             Learn Database. Solve Problems. Compete. Master.
