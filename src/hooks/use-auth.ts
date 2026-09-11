@@ -5,7 +5,10 @@ import { useConvexAuth, useQuery } from "convex/react";
 
 export function useAuth() {
   const { isLoading: isAuthLoading, isAuthenticated } = useConvexAuth();
-  const user = useQuery(api.users.currentUser);
+  // Skip query saat belum login — kalau tidak, query tetap jalan ke server
+  // dan error server (backend down) membuat halaman /auth ikut crash,
+  // sehingga pengguna tidak bisa login ulang sama sekali.
+  const user = useQuery(isAuthenticated ? api.users.currentUser : false);
   const { signIn, signOut } = useAuthActions();
 
   // Token masih dianggap valid oleh Convex (isAuthenticated = true) tapi
@@ -27,7 +30,9 @@ export function useAuth() {
   }, [sessionInvalid, signOut]);
 
   // Derive isLoading directly from the dependencies instead of managing separate state
-  const isLoading = isAuthLoading || user === undefined;
+  // user === undefined juga terjadi saat query di-skip (belum login) —
+  // itu BUKAN loading, jangan blokir redirect ke /auth.
+  const isLoading = isAuthLoading || (isAuthenticated && user === undefined);
 
   return {
     isLoading,
