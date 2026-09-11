@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2, UserRoundPen, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CONVEX_URL } from "@/lib/convex-url";
 import { LottieAnimation, SparkleAnimation } from "@/components/ui/lottie-animation";
 
 function resolveRedirectAfterAuth(returnTo: string | null, fallback = "/dashboard") {
@@ -72,7 +73,7 @@ function AuthInner() {
   /** resolveIdentifier lewat convex client (bukan fetch) — helper kecil */
   async function fetchResolved(identifier: string): Promise<string | null> {
     const { ConvexHttpClient } = await import("convex/browser");
-    const client = new ConvexHttpClient(import.meta.env.VITE_CONVEX_URL as string);
+    const client = new ConvexHttpClient(CONVEX_URL);
     const res = await client.query(api.profile.resolveIdentifier, { identifier });
     return res?.email ?? null;
   }

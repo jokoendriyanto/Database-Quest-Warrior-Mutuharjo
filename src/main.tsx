@@ -10,6 +10,7 @@ import React, { StrictMode, useEffect, lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes, useLocation } from "react-router";
 import "./index.css";
+import { CONVEX_URL } from "./lib/convex-url";
 
 // Apply theme before React mounts to prevent flash
 (function initTheme() {
@@ -103,7 +104,7 @@ class RootErrorBoundary extends React.Component<
   }
 }
 
-const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
+const convex = new ConvexReactClient(CONVEX_URL);
 
 
 

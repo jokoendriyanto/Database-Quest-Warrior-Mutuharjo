@@ -235,7 +235,7 @@ This will:
 - Create a Convex project linked to your account
 - Deploy all backend functions from `src/convex/`
 - Generate TypeScript types in `src/convex/_generated/`
-- Create a `.env.local` file with `VITE_CONVEX_URL`
+- Create a `.env.local` file if needed (frontend no longer requires it)
 
 > **Note:** Keep `bun convex dev` running — it watches for changes and auto-deploys.
 
@@ -273,7 +273,9 @@ This project deploys as **two separate services**:
 | **Frontend** | React SPA (Vite build) | Vercel, Netlify, Cloudflare Pages, or any static host |
 | **Backend** | Convex functions + database | Convex Cloud (managed automatically) |
 
-The frontend connects to Convex via the `VITE_CONVEX_URL` environment variable. **There is no separate backend server to deploy** — Convex handles everything.
+The frontend connects to Convex via a **pinned URL constant** in `src/lib/convex-url.ts`. **There is no separate backend server to deploy** — Convex handles everything.
+
+> ⚠️ **Penting:** Aplikasi ini TIDAK membaca `VITE_CONVEX_URL` lagi. URL deployment Convex di-pin langsung di `src/lib/convex-url.ts`. Untuk ganti deployment (misalnya mulai tahun ajaran baru), cukup ubah konstanta `CONVEX_URL` di file itu, lalu build ulang.
 
 ---
 
@@ -300,7 +302,7 @@ bun convex login
 bun convex init
 
 # This creates a new Convex project and links it to your account
-# It also generates a .env.local file with your VITE_CONVEX_URL
+# Copy the deployment URL into src/lib/convex-url.ts afterwards
 ```
 
 #### 1.3 Deploy Schema & Functions
@@ -348,22 +350,21 @@ In the Convex Dashboard → **Authentication** → **Settings**:
 
 ### Step 2: Configure Environment Variables
 
-#### 2.1 Get Your Convex URL
+#### 2.1 Pin Your Convex URL
 
-After running `bun convex dev`, you'll have a `.env.local` file:
+Setelah deployment Convex kamu aktif, buka `src/lib/convex-url.ts` dan isi URL deployment-mu:
 
-```env
-VITE_CONVEX_URL=https://your-project-id.convex.cloud
+```ts
+export const CONVEX_URL = "https://your-project-id.convex.cloud";
 ```
 
-Copy this URL — you'll need it for the hosting platform.
+URL ini di-bake ke bundle saat build — tidak perlu set env var di hosting.
 
 #### 2.2 Environment Variables for Hosting
 
-| Variable | Value | Where to Set |
-|----------|-------|--------------|
-| `VITE_CONVEX_URL` | `https://your-project-id.convex.cloud` | Vercel/Netlify dashboard |
-| `VITE_CONVEX_SITE_URL` | `https://your-project-id.convex.site` | Vercel/Netlify dashboard |
+Tidak ada env var frontend yang wajib — URL Convex sudah di-pin di kode.
+
+> Server-side (deployment Convex): pastikan `SITE_URL`, `JWT_PRIVATE_KEY`, `JWKS`, dan `VLY_CONVEX_AUTH_ISSUER` ter-set via `npx convex env set` (lihat Step 1).
 
 > **Note:** Vite environment variables must be prefixed with `VITE_` to be accessible in the client bundle.
 
@@ -405,7 +406,7 @@ vercel
 
 ```bash
 # Add environment variables
-vercel env add VITE_CONVEX_URL production
+vercel --prod
 # Paste: https://your-project-id.convex.cloud
 
 vercel env add VITE_CONVEX_SITE_URL production
@@ -496,7 +497,7 @@ Via **Netlify Dashboard**:
 
 | Key | Value |
 |-----|-------|
-| `VITE_CONVEX_URL` | `https://your-project-id.convex.cloud` |
+| `CONVEX_URL` (pinned) | `https://your-project-id.convex.cloud` | `src/lib/convex-url.ts` |
 | `VITE_CONVEX_SITE_URL` | `https://your-project-id.convex.site` |
 
 #### 4.4 Netlify Configuration (netlify.toml)
@@ -633,7 +634,7 @@ After deploying, verify everything works:
 
 | Variable | Description | Example | Required |
 |----------|-------------|---------|----------|
-| `VITE_CONVEX_URL` | Convex deployment URL | `https://abc123.convex.cloud` | ✅ Yes |
+| `CONVEX_URL` (pinned) | Convex deployment URL, di-set di `src/lib/convex-url.ts` | `https://abc123.convex.cloud` | ❌ No (baked in code) |
 | `VITE_CONVEX_SITE_URL` | Convex site URL for auth | `https://abc123.convex.site` | ✅ Yes |
 
 ### Server-side (Convex — Backend)
@@ -915,16 +916,16 @@ bun convex login
 bun convex dev --once
 ```
 
-#### 3. "VITE_CONVEX_URL is not defined"
+#### 3. "Failed to connect / CONVEX Q(...) Server Error"
 
-- Make sure `.env.local` exists in project root
-- Contains: `VITE_CONVEX_URL=https://your-project-id.convex.cloud`
-- Restart Vite dev server after changing env vars
+- Buka `src/lib/convex-url.ts` — pastikan `CONVEX_URL` menunjuk deployment kamu yang sehat
+- Cek kesehatan backend: `npx convex run classes:list` (harus balas `[]`, bukan error)
+- Pastikan env auth ter-set di deployment: `SITE_URL`, `JWT_PRIVATE_KEY`, `JWKS`
 
 #### 4. Blank Page After Deploy
 
 - Check Vercel/Netlify build logs for errors
-- Ensure `VITE_CONVEX_URL` is set in hosting dashboard
+- Hard refresh (`Ctrl+Shift+R`) — bundle lama bisa tersangkut di cache browser
 - Check browser console for errors
 - Verify Convex functions are deployed (Convex Dashboard)
 
