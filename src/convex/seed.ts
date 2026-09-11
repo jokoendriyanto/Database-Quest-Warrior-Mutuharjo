@@ -2,7 +2,8 @@
  * Seeder data dummy — Database Quest Warrior: Mutuharjo
  *
  * Menanam: 6 kelas, 1 admin, 1 guru, 12 siswa (dengan stats, progress lesson,
- * quiz lulus, attempt latihan, badge), dan 1 Weekly Boss minggu berjalan.
+ * quiz lulus, attempt latihan, badge), kelas XI PPLG 2 diisi penuh 35 siswa
+ * dummy, dan 1 Weekly Boss minggu berjalan.
  *
  * - Semua akun dibuat lewat `createAccount` resmi Convex Auth (provider
  *   "password") → hash password valid, bisa login langsung dari UI.
@@ -112,6 +113,57 @@ const DEMO_STUDENTS: Array<[string, string, string, string, number]> = [
   ["Lukman Hakim", "lukman12", "XII PPLG 2", "🐲", 1],
 ];
 
+/* ------ Kelas penuh: XI PPLG 2 (roster 35 siswa, usernames lanjut 13+) ------ */
+
+const FULL_CLASS_NAME = "XI PPLG 2";
+const FULL_CLASS_SIZE = 35;
+
+/** Roster 35 siswa: [nama, username, jumlah lesson selesai]. */
+const FULL_CLASS_ROSTER: Array<[string, string, number]> = [
+  ["Wahyu Setiawan", "wahyu13", 7],
+  ["Dian Purnama", "dian14", 5],
+  ["Rizky Maulana", "rizky15", 9],
+  ["Syahrul Gunawan", "syahrul16", 3],
+  ["Angga Saputra", "angga17", 6],
+  ["Bayu Nugroho", "bayu18", 11],
+  ["Citra Ayu", "citra19", 8],
+  ["Dimas Prasetyo", "dimas20", 4],
+  ["Eka Wijaya", "eka21", 2],
+  ["Fajar Sidik", "fajar22", 10],
+  ["Galih Perkasa", "galih23", 5],
+  ["Hanif Abdurrahman", "hanif24", 7],
+  ["Ika Damayanti", "ika25", 1],
+  ["Kurnia Sandi", "kurnia26", 6],
+  ["Laila Ramadhani", "laila27", 12],
+  ["Maman Suherman", "maman28", 3],
+  ["Nanda Pratama", "nanda29", 8],
+  ["Oktaviani Putri", "oktav30", 5],
+  ["Putra Ardiansyah", "putra31", 9],
+  ["Qori Ananda", "qori32", 4],
+  ["Rahmat Hidayat", "rahmat33", 7],
+  ["Salsa Nabila", "salsa34", 10],
+  ["Tegar Aditya", "tegar35", 2],
+  ["Umar Faruq", "umar36", 6],
+  ["Vina Anggraini", "vina37", 11],
+  ["Wulan Sari", "wulan38", 5],
+  ["Yoga Pratama", "yoga39", 8],
+  ["Zaki Mubarok", "zaki40", 3],
+  ["Aldi Firmansyah", "aldi41", 7],
+  ["Bagas Wicaksono", "bagas42", 4],
+  ["Candra Wijaya", "candra43", 9],
+  ["Dinda Kurnia", "dinda44", 6],
+  ["Erwin Setiawan", "erwin45", 12],
+  ["Fira Oktaviani", "fira46", 5],
+  ["Gilang Ramadan", "gilang47", 8],
+];
+
+const FULL_CLASS_EMOJIS = [
+  "🐢", "🦁", "🐯", "🐨", "🦉", "🐬", "🦄", "🐙", "🦋", "🐝",
+  "🦖", "🐧", "🦜", "🐰", "🦊", "🐳", "🦔", "🐢", "🐣", "🦝",
+  "🐿️", "🦥", "🦇", "🐸", "🦂", "🦗", "🕷️", "🐞", "🦚", "🦩",
+  "🐊", "🐘", "🦏", "🐪", "🦒",
+];
+
 /* ------------------------------ utilitas ------------------------------ */
 
 /** PRNG deterministik supaya seed bisa direproduksi. */
@@ -151,6 +203,12 @@ export const seedStatus = query({
         ctx.db.query("exerciseAttempts").collect(),
         ctx.db.query("weeklyBoss").collect(),
       ]);
+    const classCounts: Record<string, number> = {};
+    for (const u of users) {
+      if (u.role === "student" && typeof u.className === "string") {
+        classCounts[u.className] = (classCounts[u.className] ?? 0) + 1;
+      }
+    }
     return {
       users: users.length,
       teachers: users.filter((u) => u.role === "teacher").length,
@@ -162,6 +220,7 @@ export const seedStatus = query({
       quizSessions: quizzes.length,
       exerciseAttempts: attempts.length,
       weeklyBoss: boss.length,
+      classCounts,
     };
   },
 });
@@ -194,6 +253,17 @@ export const findUserByEmail = internalQuery({
       .withIndex("email", (q) => q.eq("email", email))
       .first();
     return user?._id ?? null;
+  },
+});
+
+/** Hitung total siswa yang sudah ada di satu kelas (semua domain email). */
+export const countUsersInClass = internalQuery({
+  args: { className: v.string() },
+  handler: async (ctx, { className }) => {
+    const users = await ctx.db.query("users").collect();
+    return users.filter(
+      (u) => u.role === "student" && u.className === className,
+    ).length;
   },
 });
 
@@ -392,6 +462,7 @@ export const seedAll = action({
     staff: number;
     students: number;
     skipped: number;
+    fullClass: { className: string; existing: number; added: number; target: number };
   }> => {
     const access = (await ctx.runQuery(internal.seed.checkAccess)) as {
       allowed: boolean;
@@ -455,16 +526,56 @@ export const seedAll = action({
       }
     }
 
+    // 3.5. Kelas penuh: XI PPLG 2 → total 35 siswa (idempotent)
+    const existingInClass: number = await ctx.runQuery(internal.seed.countUsersInClass, {
+      className: FULL_CLASS_NAME,
+    });
+    const need = Math.max(0, FULL_CLASS_SIZE - existingInClass);
+    let fullClassAdded = 0;
+    for (let i = 0; i < Math.min(need, FULL_CLASS_ROSTER.length); i++) {
+      const [name, username, lessonsDone] = FULL_CLASS_ROSTER[i];
+      const email = `${username}@${DEMO_DOMAIN_SISWA}`;
+      const existing = await ctx.runQuery(internal.seed.findUserByEmail, { email });
+      if (!existing) {
+        try {
+          await retrieveAccount(ctx, { provider: "password", account: { id: email } });
+        } catch {
+          await createAccount(ctx, {
+            provider: "password",
+            account: { id: email, secret: SISWA_PASSWORD },
+            profile: { email, name } as any,
+          });
+        }
+      }
+      const res: { ok: boolean; skipped?: boolean } = await ctx.runMutation(
+        internal.seed.attachStudentData,
+        {
+          email,
+          name,
+          username,
+          className: FULL_CLASS_NAME,
+          emoji: FULL_CLASS_EMOJIS[i % FULL_CLASS_EMOJIS.length],
+          seedNum: 100 + i,
+          lessonsDone,
+        },
+      );
+      if (res.ok && !res.skipped) fullClassAdded++;
+    }
+    const fullClass = {
+      className: FULL_CLASS_NAME,
+      existing: existingInClass,
+      added: fullClassAdded,
+      target: FULL_CLASS_SIZE,
+    };
+
     // 4. Weekly Boss
     const bossAdded: boolean = await ctx.runMutation(internal.seed.seedBoss);
 
-    return { ok: true as const, classesAdded, bossAdded, ...summary };
+    return { ok: true as const, classesAdded, bossAdded, ...summary, fullClass };
   },
 });
 
 /* ------------------------------ pembersih ------------------------------ */
-
-/** Hapus SEMUA data dummy siswa (email @siswa.mutuharjo.id) + turunannya. Guru/admin only. */
 export const clearDummyStudents = mutation({
   args: {},
   handler: async (ctx) => {
