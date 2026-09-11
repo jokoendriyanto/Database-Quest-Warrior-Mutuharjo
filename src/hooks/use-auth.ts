@@ -8,7 +8,10 @@ export function useAuth() {
   // Skip query saat belum login — kalau tidak, query tetap jalan ke server
   // dan error server (backend down) membuat halaman /auth ikut crash,
   // sehingga pengguna tidak bisa login ulang sama sekali.
-  const user = useQuery(isAuthenticated ? api.users.currentUser : false);
+  const user = useQuery(
+    api.users.currentUser,
+    isAuthenticated ? {} : "skip",
+  );
   const { signIn, signOut } = useAuthActions();
 
   // Token masih dianggap valid oleh Convex (isAuthenticated = true) tapi

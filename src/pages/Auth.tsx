@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery, useMutation } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,18 @@ import { LottieAnimation, SparkleAnimation } from "@/components/ui/lottie-animat
 function resolveRedirectAfterAuth(returnTo: string | null, fallback = "/dashboard") {
   if (returnTo?.startsWith("/") && !returnTo.startsWith("//")) return returnTo;
   return fallback;
+}
+
+/** Satu client HTTP bersama untuk query manual di halaman ini.
+ *  Dipakai alih-alih useQuery supaya error server (backend down) TIDAK
+ *  merusak render halaman /auth — pengguna tetap bisa melihat form masuk. */
+let clientPromise: Promise<import("convex/browser").ConvexHttpClient> | null = null;
+function getConvexClient() {
+  clientPromise ??= import("convex/browser").then(
+    ({ ConvexHttpClient }) =>
+      new ConvexHttpClient(import.meta.env.VITE_CONVEX_URL as string),
+  );
+  return clientPromise;
 }
 
 function AuthInner() {
@@ -48,9 +60,28 @@ function AuthInner() {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"student" | "teacher">("student");
 
-  // kelas resmi dari database — dikelola guru/admin
-  const classes = useQuery(api.classes.list);
-  const classOptions = classes?.map((c) => c.name) ?? [];
+  // kelas resmi dari database — dikelola guru/admin.
+  // Diambil manual via HTTP client (bukan useQuery) agar halaman /auth tetap
+  // tampil walau server backend sedang bermasalah.
+  const [classOptions, setClassOptions] = useState<string[]>([]);
+  const [classesLoaded, setClassesLoaded] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    getConvexClient()
+      .then((client) => client.query(api.classes.list))
+      .then((list) => {
+        if (!alive) return;
+        setClassOptions(list.map((c) => c.name));
+        setClassesLoaded(true);
+      })
+      .catch(() => {
+        /* server bermasalah — biarkan kosong, form tetap bisa dipakai */
+        if (alive) setClassesLoaded(true);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const completeProfile = useMutation(api.profile.completeProfile);
 
@@ -63,16 +94,31 @@ function AuthInner() {
   const usernameNorm = username.trim().toLowerCase();
   const usernameValid = /^[a-z0-9_]{3,20}$/.test(usernameNorm);
 
-  const usernameTakenResult = useQuery(api.profile.checkUsername, {
-    username: mode === "register" && usernameValid ? usernameNorm : "___idle___",
-  });
-  const usernameAvailable =
-    mode === "register" && usernameValid ? usernameTakenResult !== false : true;
+  // Cek ketersediaan username manual + debounce — error server tidak
+  // merusak render. null = belum diketahui (tidak memblokir submit;
+  // server tetap memvalidasi ulang saat pendaftaran).
+  const [usernameTaken, setUsernameTaken] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (mode !== "register" || !usernameValid || !usernameNorm) {
+      setUsernameTaken(null);
+      return;
+    }
+    setUsernameTaken(null);
+    const t = setTimeout(() => {
+      getConvexClient()
+        .then((client) =>
+          client.query(api.profile.checkUsername, { username: usernameNorm }),
+        )
+        .then((available) => setUsernameTaken(available === false))
+        .catch(() => setUsernameTaken(null));
+    }, 400);
+    return () => clearTimeout(t);
+  }, [mode, usernameNorm, usernameValid]);
+  const usernameAvailable = usernameTaken !== true;
 
   /** resolveIdentifier lewat convex client (bukan fetch) — helper kecil */
   async function fetchResolved(identifier: string): Promise<string | null> {
-    const { ConvexHttpClient } = await import("convex/browser");
-    const client = new ConvexHttpClient(import.meta.env.VITE_CONVEX_URL as string);
+    const client = await getConvexClient();
     const res = await client.query(api.profile.resolveIdentifier, { identifier });
     return res?.email ?? null;
   }
@@ -303,19 +349,21 @@ WHERE effort > excuse;`}
                   className="font-mono"
                   autoComplete="off"
                 />
-                <p className={cn("text-xs", usernameValid ? (usernameAvailable ? "text-success" : "text-destructive") : "text-muted-foreground")}>
+                <p className={cn("text-xs", usernameValid ? (usernameTaken === false ? "text-success" : usernameTaken === true ? "text-destructive" : "text-muted-foreground") : "text-muted-foreground")}>
                   {!usernameValid
                     ? "3–20 karakter: huruf kecil, angka, underscore."
-                    : usernameTakenResult === false
+                    : usernameTaken === true
                       ? `Username "${usernameNorm}" sudah dipakai`
-                      : "Username tersedia ✓"}
+                      : usernameTaken === false
+                        ? "Username tersedia ✓"
+                        : "Ketersediaan dicek saat mendaftar"}
                 </p>
               </Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Kelas">
                   <Select value={className} onValueChange={setClassName} required={classOptions.length > 0}>
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder={classes ? "Pilih kelas" : "Memuat…"} />
+                      <SelectValue placeholder={classesLoaded ? "Pilih kelas" : "Memuat…"} />
                     </SelectTrigger>
                     <SelectContent>
                       {classOptions.map((c) => (
@@ -323,7 +371,7 @@ WHERE effort > excuse;`}
                       ))}
                     </SelectContent>
                   </Select>
-                  {classes && classOptions.length === 0 && (
+                  {classesLoaded && classOptions.length === 0 && (
                     <p className="text-xs text-muted-foreground">
                       Belum ada kelas terdaftar — hubungi guru/admin.
                     </p>
@@ -378,7 +426,7 @@ WHERE effort > excuse;`}
                 disabled={
                   busy ||
                   !usernameValid ||
-                  usernameTakenResult === false ||
+                  usernameTaken === true ||
                   (classOptions.length > 0 && !className)
                 }
                 className="h-11 w-full font-bold"

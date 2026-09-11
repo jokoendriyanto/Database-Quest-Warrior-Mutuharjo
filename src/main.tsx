@@ -84,8 +84,10 @@ class RootErrorBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       const msg = this.state.message;
-      // Error Convex (mis. "[CONVEX Q(users:currentUser)] Server Error")
-      // biasanya sesi usang — tidak perlu stack trace untuk pengguna.
+      // Error Convex (mis. "[CONVEX Q(users:currentUser)] Server Error"):
+      // bisa karena sesi usang ATAU server backend sedang bermasalah.
+      // Tampilkan pemulihan yang jujur — jangan salahkan sesi kalau
+      // servernya yang down, agar pengguna tidak ling-ling loop.
       const isConvexError = /CONVEX Q\(|Server Error|Could not find.*_id/i.test(msg);
       if (isConvexError) {
         return (
@@ -93,11 +95,12 @@ class RootErrorBoundary extends React.Component<
             <div className="max-w-md text-center">
               <p className="kicker">Koneksi Database</p>
               <h1 className="mt-2 text-xl font-bold tracking-tight">
-                Sesi kamu sudah tidak berlaku
+                Tidak dapat terhubung ke server
               </h1>
               <p className="mt-2 text-sm text-muted-foreground">
-                Data sesi lama di browser tidak cocok dengan server. Muat ulang
-                halaman ini untuk masuk kembali — progres belajarmu aman.
+                Server database sedang bermasalah atau sesi login sudah
+                kedaluwarsa. Coba muat ulang halaman ini. Jika masih gagal,
+                tunggu beberapa saat lalu coba lagi — atau masuk ulang.
               </p>
               <div className="mt-6 flex items-center justify-center gap-3">
                 <button
@@ -108,7 +111,11 @@ class RootErrorBoundary extends React.Component<
                 </button>
                 <button
                   onClick={() => {
-                    localStorage.removeItem("convex-auth-token");
+                    try {
+                      localStorage.removeItem("convex-auth-token");
+                    } catch {
+                      /* ignore */
+                    }
                     window.location.href = "/auth";
                   }}
                   className="rounded-md border border-border px-4 py-2 text-sm font-semibold transition-colors hover:bg-secondary"
