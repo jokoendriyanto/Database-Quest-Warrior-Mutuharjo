@@ -83,56 +83,12 @@ class RootErrorBoundary extends React.Component<
   }
   render() {
     if (this.state.hasError) {
-      const msg = this.state.message;
-      // Error Convex (mis. "[CONVEX Q(users:currentUser)] Server Error"):
-      // bisa karena sesi usang ATAU server backend sedang bermasalah.
-      // Tampilkan pemulihan yang jujur — jangan salahkan sesi kalau
-      // servernya yang down, agar pengguna tidak ling-ling loop.
-      const isConvexError = /CONVEX Q\(|Server Error|Could not find.*_id/i.test(msg);
-      if (isConvexError) {
-        return (
-          <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-6">
-            <div className="max-w-md text-center">
-              <p className="kicker">Koneksi Database</p>
-              <h1 className="mt-2 text-xl font-bold tracking-tight">
-                Tidak dapat terhubung ke server
-              </h1>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Server database sedang bermasalah atau sesi login sudah
-                kedaluwarsa. Coba muat ulang halaman ini. Jika masih gagal,
-                tunggu beberapa saat lalu coba lagi — atau masuk ulang.
-              </p>
-              <div className="mt-6 flex items-center justify-center gap-3">
-                <button
-                  onClick={() => window.location.reload()}
-                  className="rounded-md bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90"
-                >
-                  Muat Ulang
-                </button>
-                <button
-                  onClick={() => {
-                    try {
-                      localStorage.removeItem("convex-auth-token");
-                    } catch {
-                      /* ignore */
-                    }
-                    window.location.href = "/auth";
-                  }}
-                  className="rounded-md border border-border px-4 py-2 text-sm font-semibold transition-colors hover:bg-secondary"
-                >
-                  Masuk ulang
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      }
       return (
         <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-6">
           <div className="max-w-lg text-center">
             <p className="text-sm font-semibold">Preview runtime error</p>
             <p className="mt-2 text-xs text-muted-foreground break-words">
-              {msg}
+              {this.state.message}
             </p>
             {this.state.stack && (
               <pre className="mt-3 text-left text-[10px] leading-4 text-muted-foreground/80 max-h-40 overflow-auto rounded border border-border/60 p-2">

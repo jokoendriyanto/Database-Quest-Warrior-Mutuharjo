@@ -9,24 +9,13 @@ import { query, QueryCtx } from "./_generated/server";
 export const currentUser = query({
   args: {},
   handler: async (ctx) => {
-    try {
-      const user = await getCurrentUser(ctx);
+    const user = await getCurrentUser(ctx);
 
-      if (user === null) {
-        return null;
-      }
-
-      return user;
-    } catch (err) {
-      // Penyebab umum di production: session token masih ada di browser
-      // tapi user-nya sudah dihapus (mis. reset DB). getAuthUserId sukses
-      // karena token valid, tapi ctx.db.get(userId) gagal karena id tidak
-      // ada lagi. Jangan biarkan error ini crash seluruh app — kembalikan
-      // null supaya client menganggap user belum login dan diarahkan ke
-      // halaman masuk.
-      console.warn("users:currentUser failed, treating as signed out:", err);
+    if (user === null) {
       return null;
     }
+
+    return user;
   },
 });
 
