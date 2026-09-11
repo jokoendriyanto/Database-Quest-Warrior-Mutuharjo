@@ -38,6 +38,7 @@ const AssignmentsPage = lazy(() => import("./pages/AssignmentsPage.tsx"));
 const AdminPage = lazy(() => import("./pages/AdminPage.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const ShopPage = lazy(() => import("./pages/ShopPage.tsx"));
+const CertificatePage = lazy(() => import("./pages/CertificatePage.tsx"));
 
 // Simple loading fallback for route transitions
 function RouteLoading() {
@@ -180,6 +181,7 @@ createRoot(document.getElementById("root")!).render(
                 <Route path="/assignments" element={<AssignmentsPage />} />
                 <Route path="/teacher" element={<TeacherPage />} />
                 <Route path="/admin" element={<AdminPage />} />
+                <Route path="/certificate" element={<CertificatePage />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>

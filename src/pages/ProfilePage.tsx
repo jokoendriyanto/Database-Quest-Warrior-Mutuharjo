@@ -8,6 +8,7 @@ import {
   Trophy,
   Lock,
   Target,
+  Award,
 } from "lucide-react";
 import { BADGES, WORLD_SKILL, RANKS, levelProgress, tierFromWins } from "@/lib/game";
 import { cn } from "@/lib/utils";
@@ -276,7 +277,15 @@ export default function ProfilePage() {
 
       {/* ================= SKILL PER DUNIA ================= */}
       <section aria-labelledby="skills-h">
-        <h2 id="skills-h" className="kicker mb-3">SKILL PER DUNIA</h2>          {data.skillStats.length === 0 ? (
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 id="skills-h" className="kicker">SKILL PER DUNIA</h2>
+          <Link
+            to="/certificate"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
+          >
+            <Award className="size-3.5" /> Cetak Sertifikat Kompetensi
+          </Link>
+        </div>          {data.skillStats.length === 0 ? (
             <div className="panel flex flex-col items-center gap-3 px-4 py-8 text-center">
               <LottieAnimation animation="empty-box" size="md" />
               <p className="font-mono text-xs text-muted-foreground">

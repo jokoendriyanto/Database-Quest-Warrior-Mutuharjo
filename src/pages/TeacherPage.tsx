@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { Download, Pencil, Trash2, CheckSquare, Square, X, ArrowRight } from "lucide-react";
+import { Download, Pencil, Trash2, CheckSquare, Square, X, ArrowRight, Award } from "lucide-react";
 import { getExercise } from "@/lib/curriculum";
 import { WORLD_SKILL } from "@/lib/game";
 import { DatabaseLoadingAnimation } from "@/components/ui/lottie-animation";
@@ -609,13 +609,22 @@ export default function TeacherPage() {
                           {st.label}
                         </td>
                         <td className="px-3 py-2">
-                          <button
-                            onClick={() => setEditing(s)}
-                            className="rounded-md p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                            title="Edit siswa"
-                          >
-                            <Pencil className="size-3.5" />
-                          </button>
+                          <div className="flex items-center gap-0.5">
+                            <Link
+                              to={`/certificate?studentId=${s.userId}`}
+                              className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+                              title="Cetak Sertifikat Kompetensi"
+                            >
+                              <Award className="size-3.5" />
+                            </Link>
+                            <button
+                              onClick={() => setEditing(s)}
+                              className="rounded-md p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                              title="Edit siswa"
+                            >
+                              <Pencil className="size-3.5" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -628,7 +637,17 @@ export default function TeacherPage() {
           {/* ---------- SKILL MATRIX ---------- */}
           {matrixWorlds.length > 0 && (
             <section aria-labelledby="matrix-h">
-              <h2 id="matrix-h" className="kicker mb-3">SKILL MATRIX · ACCURACY PER TOPIK</h2>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h2 id="matrix-h" className="kicker">SKILL MATRIX · ACCURACY PER TOPIK</h2>
+                {selected.size > 0 && (
+                  <Link
+                    to={`/certificate?studentId=${[...selected][0]}`}
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
+                  >
+                    <Award className="size-3.5" /> Cetak Sertifikat Kompetensi
+                  </Link>
+                )}
+              </div>
               <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                 {matrixWorlds.map((w) => WORLD_SKILL[w] ?? `W${w}`).join(" · ")}
               </p>

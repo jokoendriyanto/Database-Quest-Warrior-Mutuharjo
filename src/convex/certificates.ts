@@ -15,7 +15,6 @@
 
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
-import { internal } from "./_generated/api";
 import { mutation, query, internalMutation } from "./_generated/server";
 import {
   COMPETENCY_UNITS,
@@ -169,7 +168,6 @@ export const preview = query({
       .query("certificates")
       .withIndex("by_student", (q) => q.eq("studentId", targetId))
       .order("desc")
-      .filter((c) => c.fieldPath("status").equals("issued") || true)
       .first();
 
     result.issuedCertificate = last
@@ -184,6 +182,71 @@ export const preview = query({
     return result;
   },
 });
+
+/**
+ * Inti penerbitan: snapshot matrix kompeten + nomor unik tahun ini.
+ * Dipakai bersama oleh `issue` (guru/admin) dan `issueSelf` (siswa sendiri).
+ */
+async function issueCertificateFor(
+  ctx: any,
+  studentId: any,
+  issuedById: any,
+): Promise<{ id: any; certificateNumber: string }> {
+  const student = await ctx.db.get(studentId);
+  if (!student || student.role !== "student") {
+    throw new Error("Siswa tidak ditemukan.");
+  }
+
+  const stats = await ctx.db
+    .query("studentStats")
+    .withIndex("by_user", (q: any) => q.eq("userId", studentId))
+    .first();
+  const matrix = await evaluateMatrix(ctx, student, stats);
+  const competent = matrix.competencies.filter((c: { competent: boolean }) => c.competent);
+  if (competent.length === 0) {
+    throw new Error(
+      "Belum ada unit kompetensi yang tercapai (butuh ≥3 latihan per topik dengan akurasi ≥60%).",
+    );
+  }
+
+  // nomor urut tahun ini dari hitungan DB — bukan random
+  const year = new Date().getFullYear();
+  const all = await ctx.db.query("certificates").collect();
+  const seqThisYear =
+    all.filter((c: { certificateNumber: string }) =>
+      c.certificateNumber.includes(`/${year}/`),
+    ).length + 1;
+  const certificateNumber = formatCertificateNumber(year, seqThisYear);
+  const token = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+
+  const validUntil =
+    CERTIFICATE_VALIDITY_YEARS != null
+      ? Date.now() + CERTIFICATE_VALIDITY_YEARS * 365.25 * 86400000
+      : undefined;
+
+  const id = await ctx.db.insert("certificates", {
+    certificateNumber,
+    studentId,
+    issuedById,
+    studentName: matrix.student.name,
+    studentUsername: matrix.student.username,
+    className: matrix.student.className || undefined,
+    schemeName: matrix.scheme.name,
+    schemeNameEn: matrix.scheme.nameEn,
+    competencies: competent.map((c: any) => ({
+      code: c.code,
+      title: c.title,
+      titleEn: c.titleEn,
+      worldNum: c.worldNum,
+      accuracy: c.accuracy,
+    })),
+    status: "issued",
+    issuedAt: Date.now(),
+    validUntil,
+    verificationToken: token,
+  });
+  return { id, certificateNumber };
+}
 
 /** Guru/admin menerbitkan sertifikat (snapshot permanen + nomor unik). */
 export const issue = mutation({
@@ -209,53 +272,7 @@ export const issue = mutation({
       }
     }
 
-    const stats = await ctx.db
-      .query("studentStats")
-      .withIndex("by_user", (q) => q.eq("userId", studentId))
-      .first();
-    const matrix = await evaluateMatrix(ctx, student, stats);
-    const competent = matrix.competencies.filter((c) => c.competent);
-    if (competent.length === 0) {
-      throw new Error(
-        "Belum ada unit kompetensi yang tercapai (butuh ≥3 latihan per topik dengan akurasi ≥60%).",
-      );
-    }
-
-    // nomor urut tahun ini dari hitungan DB — bukan random
-    const year = new Date().getFullYear();
-    const all = await ctx.db.query("certificates").collect();
-    const seqThisYear =
-      all.filter((c) => c.certificateNumber.includes(`/${year}/`)).length + 1;
-    const certificateNumber = formatCertificateNumber(year, seqThisYear);
-    const token = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
-
-    const validUntil =
-      CERTIFICATE_VALIDITY_YEARS != null
-        ? Date.now() + CERTIFICATE_VALIDITY_YEARS * 365.25 * 86400000
-        : undefined;
-
-    const id = await ctx.db.insert("certificates", {
-      certificateNumber,
-      studentId,
-      issuedById: userId,
-      studentName: matrix.student.name,
-      studentUsername: matrix.student.username,
-      className: matrix.student.className || undefined,
-      schemeName: matrix.scheme.name,
-      schemeNameEn: matrix.scheme.nameEn,
-      competencies: competent.map((c) => ({
-        code: c.code,
-        title: c.title,
-        titleEn: c.titleEn,
-        worldNum: c.worldNum,
-        accuracy: c.accuracy,
-      })),
-      status: "issued",
-      issuedAt: Date.now(),
-      validUntil,
-      verificationToken: token,
-    });
-    return { id, certificateNumber };
+    return issueCertificateFor(ctx, studentId, userId);
   },
 });
 
@@ -271,52 +288,7 @@ export const issueSelf = mutation({
       throw new Error("Gunakan penerbitan oleh guru untuk akun guru/admin.");
     }
 
-    const stats = await ctx.db
-      .query("studentStats")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .first();
-    const matrix = await evaluateMatrix(ctx, me, stats);
-    const competent = matrix.competencies.filter((c) => c.competent);
-    if (competent.length === 0) {
-      throw new Error(
-        "Belum ada unit kompetensi yang tercapai (butuh ≥3 latihan per topik dengan akurasi ≥60%).",
-      );
-    }
-
-    const year = new Date().getFullYear();
-    const all = await ctx.db.query("certificates").collect();
-    const seqThisYear =
-      all.filter((c) => c.certificateNumber.includes(`/${year}/`)).length + 1;
-    const certificateNumber = formatCertificateNumber(year, seqThisYear);
-    const token = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
-
-    const validUntil =
-      CERTIFICATE_VALIDITY_YEARS != null
-        ? Date.now() + CERTIFICATE_VALIDITY_YEARS * 365.25 * 86400000
-        : undefined;
-
-    const id = await ctx.db.insert("certificates", {
-      certificateNumber,
-      studentId: userId,
-      issuedById: userId,
-      studentName: matrix.student.name,
-      studentUsername: matrix.student.username,
-      className: matrix.student.className || undefined,
-      schemeName: matrix.scheme.name,
-      schemeNameEn: matrix.scheme.nameEn,
-      competencies: competent.map((c) => ({
-        code: c.code,
-        title: c.title,
-        titleEn: c.titleEn,
-        worldNum: c.worldNum,
-        accuracy: c.accuracy,
-      })),
-      status: "issued",
-      issuedAt: Date.now(),
-      validUntil,
-      verificationToken: token,
-    });
-    return { id, certificateNumber };
+    return issueCertificateFor(ctx, userId, userId);
   },
 });
 
@@ -404,17 +376,3 @@ export const getForRender = query({
   },
 });
 
-/* -------------------------- internal helpers --------------------------- */
-
-export const countThisYear = internalMutation({
-  args: { year: v.number() },
-  handler: async (ctx, { year }) =>
-    (await ctx.db.query("certificates").collect()).filter((c) =>
-      c.certificateNumber.includes(`/${year}/`),
-    ).length,
-});
-
-export const _unusedInternal = internalMutation({
-  args: {},
-  handler: async () => null,
-});

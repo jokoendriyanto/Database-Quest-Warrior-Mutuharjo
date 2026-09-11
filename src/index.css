@@ -239,3 +239,80 @@
     50% { transform: translateY(-5px); }
   }
 }
+
+/* ================= SERTIFIKAT KOMPETENSI (A4 portrait, print-ready) ================= */
+@page {
+  size: A4 portrait;
+  margin: 0;
+}
+
+@media print {
+  /* Sembunyikan seluruh aplikasi; hanya .print-root yang tercetak */
+  body * {
+    visibility: hidden;
+  }
+  .print-root,
+  .print-root * {
+    visibility: visible;
+  }
+  .print-root {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+  }
+  .cert-sheet {
+    width: 210mm !important;
+    min-height: 296mm !important;
+    height: 296mm !important;
+    max-height: 296mm !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    outline: none !important;
+    break-after: page;
+    page-break-after: always;
+  }
+  .cert-sheet:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+  .cert-no-print {
+    display: none !important;
+  }
+}
+
+/* Lembar A4 di preview layar — ukuran fisik 210×297 mm */
+.cert-sheet {
+  width: 210mm;
+  min-height: 297mm;
+  height: 297mm;
+  margin: 0 auto 8mm auto;
+  background: #ffffff;
+  color: #16181d;
+  border-radius: 2px;
+  box-shadow: 0 6px 32px rgb(0 0 0 / 0.18);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.cert-frame {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border: 1.2mm solid #14532d;
+  outline: 0.3mm solid #14532d;
+  outline-offset: 1.2mm;
+  margin: 6mm;
+  padding: 7mm 9mm;
+}
+.cert-serif {
+  font-family: "Times New Roman", Times, Georgia, serif;
+}
+.cert-underline {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 5px;
+}
+
