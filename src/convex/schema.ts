@@ -303,6 +303,36 @@ const schema = defineSchema(
     })
       .index("by_code", ["code"])
       .index("by_teacher", ["teacherId"]),
+
+    /* ------------- Sertifikat Kompetensi (Skill Matrix) ------------------ */
+    // Snapshot resmi saat sertifikat diterbitkan — perubahan Skill Matrix
+    // di masa depan TIDAK mengubah sertifikat yang sudah terbit.
+    certificates: defineTable({
+      certificateNumber: v.string(), // "SK/SMK-MUH1-RPL/2026/000001" — unik
+      studentId: v.id("users"),
+      issuedById: v.id("users"), // guru/admin yang menerbitkan (atau siswa sendiri)
+      studentName: v.string(),
+      studentUsername: v.string(),
+      className: v.optional(v.string()),
+      schemeName: v.string(), // "Junior Database Programmer"
+      schemeNameEn: v.optional(v.string()),
+      competencies: v.array(
+        v.object({
+          code: v.string(), // "SQL-03"
+          title: v.string(),
+          titleEn: v.optional(v.string()),
+          worldNum: v.optional(v.number()),
+          accuracy: v.number(),
+        }),
+      ),
+      status: v.union(v.literal("issued"), v.literal("revoked")),
+      issuedAt: v.number(),
+      validUntil: v.optional(v.number()), // undefined = kebijakan belum ditetapkan
+      verificationToken: v.string(),
+    })
+      .index("by_number", ["certificateNumber"])
+      .index("by_student", ["studentId"])
+      .index("by_token", ["verificationToken"]),
   },
   {
     schemaValidation: false,
