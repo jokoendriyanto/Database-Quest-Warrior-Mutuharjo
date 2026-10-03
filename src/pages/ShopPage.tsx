@@ -31,7 +31,7 @@ export default function ShopPage() {
 
   const items = useMemo(() => {
     if (!shopData) return [];
-    return cat === "all" ? shopData.items : shopData.items.filter((i) => i.category === cat);
+    return cat === "all" ? shopData.items : shopData.items.filter((i: any) => i.category === cat);
   }, [shopData, cat]);
 
   const handleBuy = async (itemId: string) => {
@@ -107,7 +107,7 @@ export default function ShopPage() {
       {/* Items Grid */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <AnimatePresence mode="popLayout">
-          {items.map((item, idx) => {
+          {items.map((item: any, idx: any) => {
             const isOwned = owned.has(item.id);
             const canAfford = coins >= item.price;
             return (

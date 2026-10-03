@@ -1,17 +1,29 @@
 {
   "name": "Database Quest Warrior: Mutuharjo",
   "short_name": "Quest Warrior",
-  "description": "Platform belajar SQL kompetitif untuk calon programmer — pecahkan kasus, adu skill, naik rank.",
+  "description": "Belajar SQL dan database untuk siswa SMK — materi interaktif, latihan query, dan battle kompetitif.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#0f766e",
   "icons": [
     {
-      "src": "/logo.png",
-      "sizes": "any",
+      "src": "/icon-512.png",
+      "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }

@@ -49,7 +49,7 @@ export default function AssignmentsPanel() {
             id,
             label: `W${v.world.num} · ${v.lesson.title}`,
           }))
-        : (challenges?.challenges ?? []).map((c) => ({ id: c.id, label: c.title }));
+        : (challenges?.challenges ?? []).map((c: any) => ({ id: c.id, label: c.title }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,7 +121,7 @@ export default function AssignmentsPanel() {
                   <SelectValue placeholder={refOptions.length ? "Pilih…" : "Belum ada pilihan"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {refOptions.map((o) => (
+                  {refOptions.map((o: any) => (
                     <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>
                   ))}
                 </SelectContent>
@@ -133,7 +133,7 @@ export default function AssignmentsPanel() {
                 <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all">Semua kelas</SelectItem>
-                  {(classes ?? []).map((c) => (
+                  {(classes ?? []).map((c: any) => (
                     <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -179,7 +179,7 @@ export default function AssignmentsPanel() {
           </p>
         ) : (
           <ul className="divide-y divide-border rounded-lg border border-border">
-            {assignments.assignments.map((a) => (
+            {assignments.assignments.map((a: any) => (
               <li key={a.id}>
                 <div className="flex items-center gap-3 px-4 py-3">
                   <button
@@ -235,12 +235,12 @@ function SubmissionList({ assignmentId }: { assignmentId: string }) {
   if (!subs) {
     return <div className="px-4 pb-4"><div className="h-16 animate-pulse rounded bg-muted" /></div>;
   }
-  const done = subs.filter((s) => s.done);
+  const done = subs.filter((s: any) => s.done);
   return (
     <div className="border-t border-border bg-secondary/30 px-4 py-3">
       <p className="kicker mb-2">PENGERJAAN · {done.length}/{subs.length}</p>
       <ul className="grid gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
-        {subs.map((s) => (
+        {subs.map((s: any) => (
           <li key={s.userId} className="flex items-center gap-2 text-sm">
             <span
               className={cn(

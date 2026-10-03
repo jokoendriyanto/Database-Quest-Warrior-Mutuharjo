@@ -140,7 +140,7 @@ export default function ChallengesPanel() {
           </p>
         ) : (
           <ul className="divide-y divide-border rounded-lg border border-border">
-            {challenges.challenges.map((c) => (
+            {challenges.challenges.map((c: any) => (
               <li key={c.id} className="flex items-center gap-3 px-4 py-3">
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold">{c.title}</span>

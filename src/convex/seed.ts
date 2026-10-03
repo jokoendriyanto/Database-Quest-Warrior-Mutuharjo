@@ -29,6 +29,11 @@ import {
   getAuthUserId,
   retrieveAccount,
 } from "@convex-dev/auth/server";
+import { EXERCISE_MAP } from "../lib/curriculum";
+import {
+  UNIT_BY_WORLD,
+  formatCertificateNumber,
+} from "../lib/certificate";
 
 /* ------------------------------ konstanta ------------------------------ */
 
@@ -38,6 +43,12 @@ const TEACHER_EMAIL = "guru@mutuharjo.sch.id";
 const ADMIN_PASSWORD = "admin12345";
 const TEACHER_PASSWORD = "guru12345";
 const SISWA_PASSWORD = "siswa12345";
+
+/* Akun HRD demo — untuk menguji Talent Dashboard tanpa daftar manual. */
+const HRD_EMAIL = "hrd.demo@mutuharjo.sch.id";
+const HRD_PASSWORD = "hrd12345";
+const HRD_NAME = "Joko Endriyanto";
+const HRD_COMPANY = "PT Jagoan Hosting Indonesia";
 
 const DEFAULT_CLASSES = [
   "X PPLG 1",
@@ -295,6 +306,519 @@ export const attachStaffProfile = internalMutation({
     if (!user) return false;
     await ctx.db.patch(user._id, { name, username, role, onboarded: true, avatarEmoji: emoji });
     return true;
+  },
+});
+
+/**
+ * Jadikan akun yang sudah ada sebagai HRD + daftarkan perusahaannya.
+ * Dipanggil dari action seedHrdDemo SETELAH akun password dibuat.
+ * Idempotent: aman dijalankan berkali-kali.
+ */
+export const attachHrdDemoProfile = internalMutation({
+  args: {
+    email: v.string(),
+    name: v.string(),
+    companyName: v.string(),
+    industry: v.optional(v.string()),
+    website: v.optional(v.string()),
+    about: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", args.email))
+      .first();
+    if (!user) return { ok: false as const, reason: "Akun belum ada." };
+
+    await ctx.db.patch(user._id, {
+      name: args.name,
+      username: args.email.split("@")[0],
+      role: "hrd",
+      onboarded: true,
+      avatarEmoji: "🏢",
+    });
+
+    // Satu perusahaan per akun HRD — lewati bila sudah ada.
+    const existing = await ctx.db
+      .query("companies")
+      .withIndex("by_creator", (q) => q.eq("createdBy", user._id))
+      .first();
+    if (existing) {
+      return { ok: true as const, companyCreated: false };
+    }
+
+    await ctx.db.insert("companies", {
+      name: args.companyName,
+      industry: args.industry ?? undefined,
+      website: args.website ?? undefined,
+      about: args.about ?? undefined,
+      createdBy: user._id,
+      createdAt: Date.now(),
+    });
+    return { ok: true as const, companyCreated: true };
+  },
+});
+
+/**
+ * Seed satu akun HRD + data perusahaannya, supaya bisa langsung login
+ * ke /hrd/register (tab "Sudah punya akun").
+ *
+ * ACTION (butuh createAccount yang hanya jalan di action) — sama seperti
+ * seedAll. Idempotent.
+ *
+ * Jalankan:
+ *   bunx convex run seed:seedHrdDemo
+ */
+export const seedHrdDemo = action({
+  args: {},
+  handler: async (ctx): Promise<{
+    email: string;
+    password: string;
+    accountCreated: boolean;
+    ok: boolean;
+    companyCreated?: boolean;
+    reason?: string;
+  }> => {
+    const existing = await ctx.runQuery(internal.seed.findUserByEmail, {
+      email: HRD_EMAIL,
+    });
+    let accountCreated = false;
+    if (!existing) {
+      try {
+        await retrieveAccount(ctx, {
+          provider: "password",
+          account: { id: HRD_EMAIL },
+        });
+      } catch {
+        await createAccount(ctx, {
+          provider: "password",
+          account: { id: HRD_EMAIL, secret: HRD_PASSWORD },
+          profile: { email: HRD_EMAIL, name: HRD_NAME },
+        });
+        accountCreated = true;
+      }
+    }
+
+    const res: { ok: boolean; companyCreated?: boolean; reason?: string } =
+      await ctx.runMutation(internal.seed.attachHrdDemoProfile, {
+        email: HRD_EMAIL,
+        name: HRD_NAME,
+        companyName: HRD_COMPANY,
+        industry: "Hosting Provider",
+        website: "https://jagoanhosting.com",
+        about: "Penyedia hosting dan managed database untuk Pleasure platform.",
+      });
+
+    return {
+      email: HRD_EMAIL,
+      password: HRD_PASSWORD,
+      accountCreated,
+      ...res,
+    };
+  },
+});
+
+/* ---------------- kandidat dummy untuk Talent Dashboard ------------------ */
+
+/** Project portfolio dummy — dipilih melingkar sesuai index kandidat. */
+const DEMO_PORTFOLIOS: Array<{
+  title: string;
+  description: string;
+  problemSolved: string;
+  techStack: string[];
+  skills: string[];
+  querySample: string;
+}> = [
+  {
+    title: "Dashboard Absensi SMK",
+    description:
+      "Rekap kehadiran harian per kelas dengan ringkasan per bulan.",
+    problemSolved:
+      "Previously absensi dicatat di buku tulis, sehingga rekap bulanan butuh waktu lama.",
+    techStack: ["MySQL", "PHP", "Bootstrap"],
+    skills: ["GROUP BY", "COUNT", "DATE"],
+    querySample:
+      "SELECT class_name, COUNT(*) AS hadir\nFROM attendance\nWHERE MONTH(attended_at) = 4\nGROUP BY class_name;",
+  },
+  {
+    title: "Inventaris Alat Lab Komputer",
+    description:
+      "Mencatat aset lab, kondisi, dan riwayat peminjaman barang.",
+    problemSolved:
+      "Alat yang rusak tidak pernah terdeteksi karena pencatatan masih manual.",
+    techStack: ["PostgreSQL", "Node.js", "React"],
+    skills: ["JOIN", "CRUD", "Validasi"],
+    querySample:
+      "SELECT a.name, a.condition, COUNT(l.id) AS dipinjam\nFROM assets a\nLEFT JOIN loans l ON l.asset_id = a.id\nGROUP BY a.name, a.condition;",
+  },
+  {
+    title: "Sistem Perpustakaan Digital",
+    description:
+      "Pencarian buku, peminjaman, dan batas peminjaman per siswa.",
+    problemSolved:
+      "Buku yang sudah dipinjam masih bisa dipinjam lagi karena data tidak sinkron.",
+    techStack: ["MySQL", "Express", "EJS"],
+    skills: ["INNER JOIN", "Subquery", "Transaction"],
+    querySample:
+      "SELECT b.title, COUNT(l.id) AS total\nFROM books b\nLEFT JOIN loans l ON l.book_id = b.id\nGROUP BY b.title\nORDER BY total DESC;",
+  },
+  {
+    title: "Analisis Nilai Rapor Digital",
+    description:
+      "Rekap nilai per semester dan grafik perkembangan tiap mata pelajaran.",
+    problemSolved:
+      "Analisis nilai dilakukan manual di spreadsheet dan sering salah hitung.",
+    techStack: ["PostgreSQL", "Python", "Chart.js"],
+    skills: ["AVG", "CASE WHEN", "Window Function"],
+    querySample:
+      "SELECT subject, ROUND(AVG(score), 1) AS rata\nFROM grades\nWHERE semester = 2\nGROUP BY subject;",
+  },
+];
+
+/**
+ * 10 siswa dummy yang mengizinkan profilnya dilihat industri.
+ * `daysAgo` dipakai untuk mengisi metrik "Kandidat baru 7 hari terakhir".
+ */
+const DEMO_CANDIDATES: Array<{
+  username: string;
+  headline: string;
+  summary: string;
+  availability: "open" | "looking" | "not_available";
+  consentPortfolio: boolean;
+  consentCertificate: boolean;
+  consentContact: boolean;
+  daysAgo: number;
+  portfolioCount: number;
+}> = [
+  {
+    username: "andi01",
+    headline: "Junior Database Programmer — siap magang",
+    summary:
+      "Sudah nyaman dengan query dasar sampai JOIN. Cari posisi frontend yang banyak melibatkan database.",
+    availability: "open",
+    consentPortfolio: true,
+    consentCertificate: true,
+    consentContact: true,
+    daysAgo: 1,
+    portfolioCount: 3,
+  },
+  {
+    username: "budi03",
+    headline: "Junior Database Programmer",
+    summary:
+      "Fokus pada operasi CRUD dan optimasi query sederhana. Sedang belajar indeks.",
+    availability: "open",
+    consentPortfolio: true,
+    consentCertificate: true,
+    consentContact: true,
+    daysAgo: 2,
+    portfolioCount: 2,
+  },
+  {
+    username: "dewi05",
+    headline: "Calon Junior Database Programmer",
+    summary:
+      "Pengalaman membuat laporan penjualan dari data transaksi sekolah. Terbiasa menyajikan hasil analisis.",
+    availability: "looking",
+    consentPortfolio: true,
+    consentCertificate: true,
+    consentContact: true,
+    daysAgo: 4,
+    portfolioCount: 2,
+  },
+  {
+    username: "siti02",
+    headline: "Junior Database Programmer",
+    summary:
+      "Kuat di manipulasi data dan query analisis. Sedang memperdalam stored procedure.",
+    availability: "looking",
+    consentPortfolio: true,
+    consentCertificate: false,
+    consentContact: false,
+    daysAgo: 6,
+    portfolioCount: 2,
+  },
+  {
+    username: "gita07",
+    headline: "Junior Database Programmer",
+    summary:
+      "Pernah menangani data absensi 1.200 siswa. Terlatih membersihkan data yang tidak lengkap.",
+    availability: "looking",
+    consentPortfolio: true,
+    consentCertificate: true,
+    consentContact: false,
+    daysAgo: 9,
+    portfolioCount: 1,
+  },
+  {
+    username: "raka04",
+    headline: "Junior Database Programmer",
+    summary:
+      "Minat kuat di backend dan basis data. Aktif mencari peluang magang.",
+    availability: "open",
+    consentPortfolio: false,
+    consentCertificate: true,
+    consentContact: true,
+    daysAgo: 12,
+    portfolioCount: 0,
+  },
+  {
+    username: "kirana11",
+    headline: "Junior Database Programmer — siap kontribusi",
+    summary:
+      "Terbiasa membangun fitur dari nol, dari desain skema sampai halaman CRUD.",
+    availability: "open",
+    consentPortfolio: true,
+    consentCertificate: true,
+    consentContact: true,
+    daysAgo: 15,
+    portfolioCount: 2,
+  },
+  {
+    username: "fajri06",
+    headline: "Junior Database Programmer",
+    summary:
+      "Sedang beradaptasi, fokus menyelesaikan fundamental query.",
+    availability: "not_available",
+    consentPortfolio: true,
+    consentCertificate: false,
+    consentContact: false,
+    daysAgo: 18,
+    portfolioCount: 1,
+  },
+  {
+    username: "indah09",
+    headline: "Calon Junior Database Programmer",
+    summary:
+      "Pernah membantu digitalisasi arsip nilai. " /*环境 yang mau此题*/ + "Mencari lingkungan kerja yang suportif.",
+    availability: "looking",
+    consentPortfolio: true,
+    consentCertificate: false,
+    consentContact: true,
+    daysAgo: 3,
+    portfolioCount: 1,
+  },
+  {
+    username: "jazuli10",
+    headline: "Junior Database Programmer",
+    summary:
+      "Baru mulai, sedang mengasah query dasar dengan tekun.",
+    availability: "open",
+    consentPortfolio: false,
+    consentCertificate: false,
+    consentContact: true,
+    daysAgo: 21,
+    portfolioCount: 0,
+  },
+];
+
+/**
+ * Pasang Talent Profile + attempt tambahan + portfolio + sertifikat dummy.
+ * Consent menentukan apakah kandidat muncul di Candidate Pool.
+ * Idempotent: kalau candidateProfiles sudah ada, dilewati.
+ */
+export const attachTalentProfileDemo = internalMutation({
+  args: {
+    email: v.string(),
+    seedNum: v.number(),
+    headline: v.string(),
+    summary: v.string(),
+    availability: v.union(
+      v.literal("open"),
+      v.literal("looking"),
+      v.literal("not_available"),
+    ),
+    consentPortfolio: v.boolean(),
+    consentCertificate: v.boolean(),
+    consentContact: v.boolean(),
+    daysAgo: v.number(),
+    portfolioCount: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", args.email))
+      .first();
+    if (!user) return { ok: false as const, reason: "user-not-found" };
+
+    const existing = await ctx.db
+      .query("candidateProfiles")
+      .withIndex("by_student", (q) => q.eq("studentId", user._id))
+      .first();
+    if (existing) return { ok: true as const, skipped: true };
+
+    const rng = mulberry(7000 + args.seedNum * 131);
+    const now = Date.now();
+
+    // Kumpulkan exercise per world agar tiap unit punya >=3 attempt
+    // (syarat MIN_ATTEMPTS di matrixFor hrd.ts).
+    const byWorld = new Map<number, string[]>();
+    for (const id of EXERCISE_ORDER) {
+      const ex = EXERCISE_MAP.get(id);
+      if (!ex) continue;
+      const bucket = byWorld.get(ex.worldNum) ?? [];
+      bucket.push(id);
+      byWorld.set(ex.worldNum, bucket);
+    }
+    const worlds = [...byWorld.entries()].sort((a, b) => a[0] - b[0]);
+
+    //_unit yang benar-benar dikuasai_ → lolos COMPETENT_THRESHOLD.
+    const reach = 2 + Math.floor(rng() * Math.max(1, worlds.length - 1));
+    const mastered: number[] = [];
+
+    for (let w = 0; w < worlds.length; w++) {
+      const [worldNum, ids] = worlds[w];
+      const strong = w < reach;
+      const tries = 3 + Math.floor(rng() * 2);
+      // world kuat: 75–100%, world lemah: 30–60% (di bawah ambang 60%)
+      const accuracy = strong ? 0.75 + rng() * 0.25 : 0.3 + rng() * 0.3;
+      let correct = 0;
+      for (let t = 0; t < tries; t++) {
+        const isCorrect = rng() < accuracy;
+        if (isCorrect) correct++;
+        await ctx.db.insert("exerciseAttempts", {
+          userId: user._id,
+          exerciseId: ids[t % ids.length],
+          queryText: "-- latihan dummy talent profile",
+          isCorrect,
+          hintsUsed: Math.floor(rng() * 3),
+          xpEarned: isCorrect ? 15 : 5,
+          at: now - Math.floor((tries - t) * DAY * 0.6 * (1 + rng() * 0.8)),
+        });
+      }
+      if (correct / tries >= 0.6) mastered.push(worldNum);
+    }
+
+    await ctx.db.insert("candidateProfiles", {
+      studentId: user._id,
+      headline: args.headline,
+      summary: args.summary,
+      availability: args.availability,
+      consentProfile: true, // inilah yang bikin muncul di Candidate Pool
+      consentPortfolio: args.consentPortfolio,
+      consentCertificate: args.consentCertificate,
+      consentContact: args.consentContact,
+      updatedAt: now - args.daysAgo * DAY,
+    });
+
+    let portfolioAdded = 0;
+    for (let p = 0; p < Math.min(args.portfolioCount, DEMO_PORTFOLIOS.length); p++) {
+      const item = DEMO_PORTFOLIOS[(args.seedNum + p) % DEMO_PORTFOLIOS.length];
+      await ctx.db.insert("candidatePortfolio", {
+        studentId: user._id,
+        title: item.title,
+        description: item.description,
+        problemSolved: item.problemSolved,
+        techStack: item.techStack,
+        skills: item.skills,
+        querySample: item.querySample,
+        published: true,
+        createdAt: now - (p + 1) * 3 * DAY,
+      });
+      portfolioAdded++;
+    }
+
+    let certificateNumber: string | null = null;
+    if (args.consentCertificate && mastered.length > 0) {
+      const teacher = await ctx.db
+        .query("users")
+        .withIndex("email", (q) => q.eq("email", TEACHER_EMAIL))
+        .first();
+      const year = new Date(now).getFullYear();
+      certificateNumber = formatCertificateNumber(year, 9000 + args.seedNum);
+      await ctx.db.insert("certificates", {
+        certificateNumber,
+        studentId: user._id,
+        issuedById: teacher?._id ?? user._id,
+        studentName: (user as { name?: string }).name ?? args.email,
+        studentUsername: args.email.split("@")[0],
+        className: (user as { className?: string }).className ?? undefined,
+        schemeName: "Junior Database Programmer",
+        competencies: mastered.map((worldNum) => {
+          const unit = UNIT_BY_WORLD.get(worldNum);
+          return {
+            code: unit?.code ?? `DB-${String(worldNum).padStart(2, "0")}`,
+            title: unit?.title ?? `World ${worldNum}`,
+            worldNum,
+            accuracy: 60 + Math.floor(rng() * 40),
+          };
+        }),
+        status: "issued" as const,
+        issuedAt: now - Math.floor(rng() * 20) * DAY,
+        verificationToken: `dummy-hrd-${args.seedNum}-${mastered.length}`,
+      });
+    }
+
+    return {
+      ok: true as const,
+      mastered: mastered.length,
+      portfolioAdded,
+      certificateNumber,
+    };
+  },
+});
+
+/**
+ * Isi Talent Dashboard HRD dengan kandidat dummy: profil + consent,
+ * attempt lintas world, portfolio, dan sertifikat.
+ *
+ * ACTION. Idempotent — kandidat yang sudah punya profil dilewati.
+ * Jalankan:
+ *   bunx convex run seed:seedHrdCandidates
+ */
+export const seedHrdCandidates = action({
+  args: {},
+  handler: async (ctx): Promise<{
+    seeded: number;
+    skipped: number;
+    missing: string[];
+    masteredUnits: number;
+    portfolios: number;
+    certificates: number;
+  }> => {
+    let seeded = 0;
+    let skipped = 0;
+    let masteredUnits = 0;
+    let portfolios = 0;
+    let certificates = 0;
+    const missing: string[] = [];
+
+    for (let i = 0; i < DEMO_CANDIDATES.length; i++) {
+      const c = DEMO_CANDIDATES[i];
+      const email = `${c.username}@${DEMO_DOMAIN_SISWA}`;
+      const res: {
+        ok: boolean;
+        skipped?: boolean;
+        reason?: string;
+        mastered?: number;
+        portfolioAdded?: number;
+        certificateNumber?: string | null;
+      } = await ctx.runMutation(internal.seed.attachTalentProfileDemo, {
+        email,
+        seedNum: i,
+        headline: c.headline,
+        summary: c.summary,
+        availability: c.availability,
+        consentPortfolio: c.consentPortfolio,
+        consentCertificate: c.consentCertificate,
+        consentContact: c.consentContact,
+        daysAgo: c.daysAgo,
+        portfolioCount: c.portfolioCount,
+      });
+
+      if (!res.ok) {
+        missing.push(email);
+      } else if (res.skipped) {
+        skipped++;
+      } else {
+        seeded++;
+        masteredUnits += res.mastered ?? 0;
+        portfolios += res.portfolioAdded ?? 0;
+        if (res.certificateNumber) certificates++;
+      }
+    }
+
+    return { seeded, skipped, missing, masteredUnits, portfolios, certificates };
   },
 });
 

@@ -11,6 +11,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes, useLocation } from "react-router";
 import "./index.css";
 import { CONVEX_URL } from "./lib/convex-url";
+import { useSiteJsonLd } from "./lib/seo";
 
 // Apply theme before React mounts to prevent flash
 (function initTheme() {
@@ -39,6 +40,22 @@ const AdminPage = lazy(() => import("./pages/AdminPage.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const ShopPage = lazy(() => import("./pages/ShopPage.tsx"));
 const CertificatePage = lazy(() => import("./pages/CertificatePage.tsx"));
+// Halaman publik SEO (dapat diindeks mesin pencari)
+const MateriPage = lazy(() => import("./pages/MateriPage.tsx"));
+const LatihanPage = lazy(() => import("./pages/LatihanPage.tsx"));
+const StudiKasusPage = lazy(() => import("./pages/StudiKasusPage.tsx"));
+const TentangPage = lazy(() => import("./pages/TentangPage.tsx"));
+// Modul HRD (aditif — shell & halaman terpisah dari AppShell siswa/guru)
+const HrdShell = lazy(() => import("./components/HrdShell.tsx"));
+const HrdRegisterPage = lazy(() => import("./pages/hrd/HrdRegisterPage.tsx"));
+const HrdOverviewPage = lazy(() => import("./pages/hrd/HrdOverviewPage.tsx"));
+const HrdCandidatePoolPage = lazy(() => import("./pages/hrd/HrdCandidatePoolPage.tsx"));
+const HrdCandidateProfilePage = lazy(() => import("./pages/hrd/HrdCandidateProfilePage.tsx"));
+const HrdSkillExplorerPage = lazy(() => import("./pages/hrd/HrdSkillExplorerPage.tsx"));
+const HrdShortlistPage = lazy(() => import("./pages/hrd/HrdShortlistPage.tsx"));
+const HrdVerifyPage = lazy(() => import("./pages/hrd/HrdVerifyPage.tsx"));
+const HrdCompanyPage = lazy(() => import("./pages/hrd/HrdCompanyPage.tsx"));
+const HrdActivityPage = lazy(() => import("./pages/hrd/HrdActivityPage.tsx"));
 
 // Simple loading fallback for route transitions
 function RouteLoading() {
@@ -137,6 +154,12 @@ function AntiCheatGuard() {
   return null;
 }
 
+/** Mounts sitewide structured data (WebSite + EducationalOrganization). */
+function SiteJsonLd() {
+  useSiteJsonLd();
+  return null;
+}
+
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -147,10 +170,33 @@ createRoot(document.getElementById("root")!).render(
       <ConvexAuthProvider client={convex}>
         <BrowserRouter>
           <AntiCheatGuard />
+          <SiteJsonLd />
           <RouteSyncer />
           <Suspense fallback={<RouteLoading />}>
             <Routes>
+              {/* Halaman publik (dapat diindeks) */}
               <Route path="/" element={<Landing />} />
+              <Route path="/materi" element={<MateriPage />} />
+              <Route path="/latihan" element={<LatihanPage />} />
+              <Route path="/studi-kasus" element={<StudiKasusPage />} />
+              <Route path="/tentang" element={<TentangPage />} />
+              <Route path="/hrd/register" element={<HrdRegisterPage />} />
+              <Route
+                element={
+                  <RequireAuth>
+                    <HrdShell />
+                  </RequireAuth>
+                }
+              >
+                <Route path="/hrd" element={<HrdOverviewPage />} />
+                <Route path="/hrd/candidates" element={<HrdCandidatePoolPage />} />
+                <Route path="/hrd/candidates/:studentId" element={<HrdCandidateProfilePage />} />
+                <Route path="/hrd/explorer" element={<HrdSkillExplorerPage />} />
+                <Route path="/hrd/shortlist" element={<HrdShortlistPage />} />
+                <Route path="/hrd/verify" element={<HrdVerifyPage />} />
+                <Route path="/hrd/company" element={<HrdCompanyPage />} />
+                <Route path="/hrd/activity" element={<HrdActivityPage />} />
+              </Route>
               <Route
                 path="/auth"
                 element={<AuthPage />}

@@ -3,25 +3,95 @@
 
 <head>
   <meta charset="UTF-8" />
-  <link rel="icon" type="image/svg+xml" href="/logo.svg" />
-  <link rel="manifest" href="/manifest.webmanifest" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta
-    name="description"
-    content="Database Quest Warrior: Mutuharjo — platform belajar SQL kompetitif untuk calon programmer. Pecahkan kasus, adu skill, naik rank."
-  />
+  <title>Database Quest Warrior | Belajar SQL &amp; Database untuk SMK</title>
+  <meta name="description"
+    content="Belajar SQL dan database untuk siswa SMK lewat materi interaktif, latihan query SQL online, studi kasus, dan battle kompetitif — gratis di Database Quest Warrior." />
+  <meta name="robots" content="index, follow" />
+  <meta name="theme-color" content="#0f766e" />
+  <meta name="author" content="MrStepen (Joko Endriyanto) — SMK Muhammadiyah 1 Sukoharjo" />
+
+  <!-- Canonical (domain utama) -->
+  <link rel="canonical" href="https://database.smkmuh1-skh.sch.id/" />
+
+  <!-- Icons & PWA -->
+  <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Database Quest Warrior: Mutuharjo" />
+  <meta property="og:title" content="Database Quest Warrior | Belajar SQL & Database untuk SMK" />
+  <meta property="og:description"
+    content="Belajar SQL dan database untuk siswa SMK lewat materi interaktif, latihan query SQL online, studi kasus, dan battle kompetitif — gratis." />
+  <meta property="og:url" content="https://database.smkmuh1-skh.sch.id/" />
+  <meta property="og:locale" content="id_ID" />
+  <meta property="og:image" content="https://database.smkmuh1-skh.sch.id/og/database-quest-warrior-belajar-sql.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt"
+    content="Database Quest Warrior — platform belajar SQL dan database untuk siswa SMK" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Database Quest Warrior | Belajar SQL & Database untuk SMK" />
+  <meta name="twitter:description"
+    content="Belajar SQL dan database untuk siswa SMK lewat materi interaktif, latihan query SQL online, studi kasus, dan battle kompetitif — gratis." />
+  <meta name="twitter:image"
+    content="https://database.smkmuh1-skh.sch.id/og/database-quest-warrior-belajar-sql.png" />
+
+  <!-- Structured data sitewide (diperbarui runtime oleh src/lib/seo.ts) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "Database Quest Warrior: Mutuharjo",
+    "alternateName": ["Database Quest Warrior", "Database Quest Mutuharjo", "dq: Mutuharjo"],
+    "url": "https://database.smkmuh1-skh.sch.id/",
+    "inLanguage": "id-ID",
+    "description": "Platform belajar SQL dan database gratis untuk siswa SMK: materi interaktif, latihan query SQL online, studi kasus, dan battle kompetitif.",
+    "audience": { "@type": "EducationalAudience", "educationalRole": "student" }
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "EducationalOrganization",
+    "name": "Database Quest Warrior: Mutuharjo",
+    "url": "https://database.smkmuh1-skh.sch.id/",
+    "logo": "https://database.smkmuh1-skh.sch.id/apple-touch-icon.png",
+    "description": "Platform pembelajaran database dan SQL untuk siswa SMK PPLG — dibuat oleh MrStepen (Joko Endriyanto) SMK Muhammadiyah 1 Sukoharjo.",
+    "parentOrganization": {
+      "@type": "EducationalOrganization",
+      "name": "SMK Muhammadiyah 1 Sukoharjo",
+      "url": "https://smkmuh1-skh.sch.id"
+    }
+  }
+  </script>
+
+  <!-- Performance: preconnect font + preload font CSS (dipakai halaman publik & aplikasi) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" />
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
-    rel="stylesheet"
-  />
-  <title>Database Quest Warrior: Mutuharjo — Belajar SQL. Pecahkan Kasus. Adu Skill.</title>
+    rel="stylesheet" />
 </head>
-
 
 <body>
   <div id="root"></div>
   <script type="module" src="/src/main.tsx"></script>
+  <noscript>
+    <div style="max-width: 640px; margin: 4rem auto; padding: 0 1.5rem; font-family: system-ui, sans-serif; color: #e2e8f0; background: #0a111f; text-align: center;">
+      <h1>Database Quest Warrior — Belajar SQL &amp; Database untuk SMK</h1>
+      <p>
+        Platform belajar SQL dan database gratis untuk siswa SMK: materi interaktif,
+        latihan query SQL online, studi kasus, dan battle kompetitif.
+        Aplikasi ini membutuhkan JavaScript. Aktifkan JavaScript di browser kamu untuk mulai belajar.
+      </p>
+    </div>
+  </noscript>
 </body>
+
 </html>

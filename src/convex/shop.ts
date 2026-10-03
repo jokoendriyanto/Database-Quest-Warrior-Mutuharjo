@@ -4,7 +4,7 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { getStats } from "./gameState";
+import { getStats, findStats } from "./gameState";
 
 /* ======================== SHOP ITEMS ======================== */
 
@@ -42,7 +42,8 @@ export const getShopData = query({
     const userId = await getAuthUserId(ctx);
     if (!userId) return { items: SHOP_ITEMS, owned: [], coins: 0 };
 
-    const stats = await getStats(ctx, userId);
+    // Query TIDAK BOLEH menulis ke db — pakai findStats (baca saja).
+    const stats = await findStats(ctx, userId);
     const owned = stats?.shopItems ?? [];
     const coins = stats?.coins ?? 0;
     return { items: SHOP_ITEMS, owned, coins };
@@ -119,7 +120,7 @@ export const getDailyQuests = query({
     const userId = await getAuthUserId(ctx);
     if (!userId) return { quests: [], date: todayStr(), progress: {} };
 
-    const stats = await getStats(ctx, userId);
+    const stats = await findStats(ctx, userId);
     const today = todayStr();
 
     // Generate 3 daily quests based on today's date
@@ -201,7 +202,7 @@ export const getStreakRewards = query({
     const userId = await getAuthUserId(ctx);
     if (!userId) return { milestones: STREAK_MILESTONES, claimed: [], currentStreak: 0 };
 
-    const stats = await getStats(ctx, userId);
+    const stats = await findStats(ctx, userId);
     const streak = stats?.streak ?? 0;
     const claimed = stats?.streakRewardsClaimed ?? [];
 

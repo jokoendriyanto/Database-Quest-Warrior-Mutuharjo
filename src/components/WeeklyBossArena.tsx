@@ -101,7 +101,7 @@ export default function WeeklyBossArena() {
         <div className="mt-4 rounded-lg border border-border bg-secondary/40 p-3">
           <p className="kicker mb-2">TOP 5 TERCEPAT</p>
           <ol className="space-y-1.5">
-            {boss.topScores.map((t, i) => (
+            {boss.topScores.map((t: any, i: any) => (
               <li key={i} className="flex items-center gap-2 text-sm">
                 <span className="w-5 text-center font-mono text-xs font-bold text-warning">{i + 1}.</span>
                 <span className="text-base">{t.avatarEmoji}</span>

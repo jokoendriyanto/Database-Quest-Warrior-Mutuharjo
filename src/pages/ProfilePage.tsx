@@ -13,6 +13,9 @@ import {
 import { BADGES, WORLD_SKILL, RANKS, levelProgress, tierFromWins } from "@/lib/game";
 import { cn } from "@/lib/utils";
 import { AvatarUpload } from "@/components/AvatarUpload";
+import { useAuth } from "@/hooks/use-auth";
+import { TalentProfileSettings } from "@/components/TalentProfileSettings";
+import { PortfolioManager } from "@/components/PortfolioManager";
 import {
   LottieAnimation,
   StreakFireAnimation,
@@ -30,6 +33,7 @@ function dayLabel(date: string) {
 export default function ProfilePage() {
   const data = useQuery(api.game.dashboard);
   const duels = useQuery(api.battle.myDuelHistory);
+  const { user: authUser } = useAuth(); // modul HRD: Talent Profile hanya untuk siswa
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   // Sinkronkan avatarUrl dari data server saat pertama load
   const serverAvatarUrl = data?.user.avatarUrl ?? null;
@@ -61,11 +65,11 @@ export default function ProfilePage() {
   const duelWinRate = duelTotal > 0 ? Math.round((stats.duelWins / duelTotal) * 100) : 0;
 
   // ringkasan minggu ini dari aktivitas 7 hari (data nyata)
-  const weekExercises = activity7d.reduce((n, d) => n + d.exercises, 0);
-  const weekBattles = activity7d.reduce((n, d) => n + d.battlesWon, 0);
-  const weekLessons = activity7d.reduce((n, d) => n + d.lessons, 0);
+  const weekExercises = activity7d.reduce((n: number, d: any) => n + d.exercises, 0);
+  const weekBattles = activity7d.reduce((n: number, d: any) => n + d.battlesWon, 0);
+  const weekLessons = activity7d.reduce((n: number, d: any) => n + d.lessons, 0);
   const bestDay = activity7d.reduce(
-    (best, d) =>
+    (best: any, d: any) =>
       d.exercises + d.battlesWon + d.lessons > best.exercises + best.battlesWon + best.lessons
         ? d
         : best,
@@ -74,7 +78,7 @@ export default function ProfilePage() {
 
   // tren 24 attempt terakhir
   const trend = data.recentAttempts;
-  const trendCorrect = trend.filter((a) => a.isCorrect).length;
+  const trendCorrect = trend.filter((a: any) => a.isCorrect).length;
 
   return (
     <div className="mx-auto max-w-4xl space-y-8">
@@ -202,7 +206,7 @@ export default function ProfilePage() {
           </p>
         </div>
         <ul className="mt-3 grid grid-cols-7 gap-1.5 sm:gap-2">
-          {activity7d.map((d) => {
+          {activity7d.map((d: any) => {
             const total = d.exercises + d.battlesWon + d.lessons;
             const isToday = d.date === today;
             return (
@@ -252,7 +256,7 @@ export default function ProfilePage() {
           ) : (
             <>
               <ul className="flex flex-wrap items-center justify-center gap-1.5" aria-label="Hasil 24 percobaan terakhir">
-                {trend.map((a, i) => (
+                {trend.map((a: any, i: number) => (
                   <li
                     key={i}
                     title={a.isCorrect ? "Benar" : "Belum benar"}
@@ -294,7 +298,7 @@ export default function ProfilePage() {
             </div>
         ) : (
           <ul className="panel space-y-3 px-4 py-4">
-            {data.skillStats.map((s) => (
+            {data.skillStats.map((s: any) => (
               <li key={s.worldNum} className="flex items-center gap-3">
                 <span className="w-24 shrink-0 truncate font-mono text-[11px] font-semibold">
                   {WORLD_SKILL[s.worldNum] ?? `W${s.worldNum}`}
@@ -401,7 +405,7 @@ export default function ProfilePage() {
           </div>
         ) : (
           <ul className="panel divide-y divide-border">
-            {duels.map((d, i) => (
+            {duels.map((d: any, i: number) => (
               <li key={i} className="flex items-center gap-3 px-4 py-3">
                 <span
                   className={cn(
@@ -439,6 +443,14 @@ export default function ProfilePage() {
           </ul>
         )}
       </section>
+
+      {/* ================= TALENT PROFILE & PORTFOLIO (modul HRD, khusus siswa) ================= */}
+      {authUser?.role === "student" && (
+        <>
+          <TalentProfileSettings />
+          <PortfolioManager />
+        </>
+      )}
 
       {/* ================= CTA BAWAH ================= */}
       <nav

@@ -1,0 +1,21 @@
+User-agent: *
+Allow: /
+
+# Halaman privat (butuh login / dashboard internal) — jangan diindeks
+Disallow: /auth
+Disallow: /onboarding
+Disallow: /dashboard
+Disallow: /learn
+Disallow: /lesson/
+Disallow: /battle
+Disallow: /leaderboard
+Disallow: /profile
+Disallow: /shop
+Disallow: /assignments
+Disallow: /teacher
+Disallow: /hrd
+Disallow: /admin
+Disallow: /certificate
+Disallow: /api
+
+Sitemap: https://database.smkmuh1-skh.sch.id/sitemap.xml

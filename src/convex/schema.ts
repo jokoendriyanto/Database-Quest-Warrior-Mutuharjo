@@ -9,6 +9,7 @@ export const ROLES = {
   MEMBER: "member",
   STUDENT: "student",
   TEACHER: "teacher",
+  HRD: "hrd",
 } as const;
 
 export const roleValidator = v.union(
@@ -17,6 +18,7 @@ export const roleValidator = v.union(
   v.literal(ROLES.MEMBER),
   v.literal(ROLES.STUDENT),
   v.literal(ROLES.TEACHER),
+  v.literal(ROLES.HRD),
 );
 export type Role = Infer<typeof roleValidator>;
 
@@ -333,6 +335,84 @@ const schema = defineSchema(
       .index("by_number", ["certificateNumber"])
       .index("by_student", ["studentId"])
       .index("by_token", ["verificationToken"]),
+
+    /* ==================================================================== */
+    /*  MODUL HRD (aditif — tidak mengubah tabel/aplikasi yang sudah ada)    */
+    /* ==================================================================== */
+
+    // Perusahaan pendaftar. 1 akun HRD = 1 perusahaan.
+    companies: defineTable({
+      name: v.string(),
+      industry: v.optional(v.string()),
+      website: v.optional(v.string()),
+      about: v.optional(v.string()),
+      createdBy: v.id("users"), // akun HRD pemilik perusahaan
+      createdAt: v.number(),
+    }).index("by_creator", ["createdBy"]),
+
+    // Profil publik (consent-based) milik siswa. Default: consent false.
+    candidateProfiles: defineTable({
+      studentId: v.id("users"), // unik — satu profil per siswa
+      headline: v.optional(v.string()),
+      summary: v.optional(v.string()),
+      availability: v.union(
+        v.literal("open"),
+        v.literal("looking"),
+        v.literal("not_available"),
+      ),
+      // Izin granular — default false sampai siswa menyetujui.
+      consentProfile: v.boolean(),
+      consentPortfolio: v.boolean(),
+      consentCertificate: v.boolean(),
+      consentContact: v.boolean(),
+      updatedAt: v.number(),
+    })
+      .index("by_student", ["studentId"])
+      .index("by_consent", ["consentProfile"]),
+
+    // Portfolio project yang DIPUBLIKASIKAN eksplisit oleh siswa.
+    // Sumber data: project custom challenges/challenge submissions yang sudah
+    // selesai — siswa memilih mana yang boleh tampil ke industri.
+    candidatePortfolio: defineTable({
+      studentId: v.id("users"),
+      title: v.string(),
+      description: v.string(),
+      problemSolved: v.optional(v.string()),
+      techStack: v.optional(v.array(v.string())),
+      skills: v.optional(v.array(v.string())),
+      schemaNote: v.optional(v.string()),
+      querySample: v.optional(v.string()),
+      published: v.boolean(),
+      createdAt: v.number(),
+    })
+      .index("by_student", ["studentId"])
+      .index("by_published", ["published"]),
+
+    // Shortlist privat per perusahaan. Tidak terlihat perusahaan lain.
+    shortlists: defineTable({
+      hrdUserId: v.id("users"),
+      studentId: v.id("users"),
+      status: v.union(
+        v.literal("saved"),
+        v.literal("reviewed"),
+        v.literal("shortlisted"),
+        v.literal("contacted"),
+      ),
+      note: v.optional(v.string()),
+      updatedAt: v.number(),
+      createdAt: v.number(),
+    })
+      .index("by_hrd", ["hrdUserId"])
+      .index("by_hrd_student", ["hrdUserId", "studentId"]),
+
+    // Log aktivitas HRD — jejak audit akses profil kandidat.
+    hrdActivityLogs: defineTable({
+      hrdUserId: v.id("users"),
+      action: v.string(), // "view_candidate" | "view_certificate" | "shortlist_update" | "search"
+      studentId: v.optional(v.id("users")),
+      detail: v.optional(v.string()),
+      at: v.number(),
+    }).index("by_hrd", ["hrdUserId"]),
   },
   {
     schemaValidation: false,

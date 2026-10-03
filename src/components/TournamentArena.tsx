@@ -107,7 +107,7 @@ export default function TournamentArena({ role }: { role: string }) {
               Belum ada turnamen. {canHost ? "Buat SQL Cup pertama di bawah." : "Minta gurumu membuat SQL Cup."}
             </li>
           )}
-          {tournaments.map((t) => (
+          {tournaments.map((t: any) => (
             <li key={t.id} className="flex items-center gap-3 py-3">
               <LottieAnimation animation="trophy-shine" size="sm" className="opacity-80" />
               <div className="min-w-0 flex-1">
@@ -197,7 +197,7 @@ function Bracket({
   }, [detail.matches]);
 
   const myMatch = detail.matches.find(
-    (m) => m.isMine && !m.winner && m.exercise,
+    (m: any) => m.isMine && !m.winner && m.exercise,
   );
 
   return (
@@ -225,7 +225,7 @@ function Bracket({
       {/* pemain */}
       {detail.status === "open" && (
         <div className="mt-3 flex flex-wrap gap-1.5">
-          {detail.players.map((p) => (
+          {detail.players.map((p: any) => (
             <span key={p.name} className="rounded border border-border px-2 py-0.5 font-mono text-[11px]">
               {p.emoji} {p.name}
             </span>

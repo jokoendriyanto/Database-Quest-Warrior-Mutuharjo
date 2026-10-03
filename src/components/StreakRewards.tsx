@@ -20,7 +20,7 @@ export default function StreakRewards() {
       </div>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        {data.milestones.map((m, idx) => {
+        {data.milestones.map((m: any, idx: any) => {
           const reached = data.currentStreak >= m.days;
           const claimed = data.claimed.includes(m.days);
 

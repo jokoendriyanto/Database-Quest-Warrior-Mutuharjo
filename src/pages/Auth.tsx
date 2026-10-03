@@ -16,6 +16,7 @@ import {
 import { Loader2, UserRoundPen, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CONVEX_URL } from "@/lib/convex-url";
+import { useSeo } from "@/lib/seo";
 import { LottieAnimation, SparkleAnimation } from "@/components/ui/lottie-animation";
 
 function resolveRedirectAfterAuth(returnTo: string | null, fallback = "/dashboard") {
@@ -24,6 +25,12 @@ function resolveRedirectAfterAuth(returnTo: string | null, fallback = "/dashboar
 }
 
 function AuthInner() {
+  useSeo({
+    title: "Masuk atau Daftar",
+    description: "Halaman login dan pendaftaran Database Quest Warrior.",
+    path: "/auth",
+    robots: "noindex, nofollow",
+  });
   const { isLoading: authLoading, isAuthenticated, signIn } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -51,7 +58,7 @@ function AuthInner() {
 
   // kelas resmi dari database — dikelola guru/admin
   const classes = useQuery(api.classes.list);
-  const classOptions = classes?.map((c) => c.name) ?? [];
+  const classOptions = classes?.map((c: any) => c.name) ?? [];
 
   const completeProfile = useMutation(api.profile.completeProfile);
 
@@ -319,7 +326,7 @@ WHERE effort > excuse;`}
                       <SelectValue placeholder={classes ? "Pilih kelas" : "Memuat…"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {classOptions.map((c) => (
+                      {classOptions.map((c: any) => (
                         <SelectItem key={c} value={c}>{c}</SelectItem>
                       ))}
                     </SelectContent>
@@ -400,7 +407,7 @@ WHERE effort > excuse;`}
         </div>
 
         <footer className="mx-auto w-full max-w-md pt-8 text-xs text-muted-foreground">
-          Made With Love By MrStepen ( Joko Endriyanto ) · © 2026 Database Quest Warrior: Mutuharjo
+          Made With Love By ♥ MutuDev Team · © 2026 Database Quest Warrior: Mutuharjo
         </footer>
       </main>
     </div>

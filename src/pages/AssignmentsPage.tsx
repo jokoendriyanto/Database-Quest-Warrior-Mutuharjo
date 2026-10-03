@@ -60,7 +60,7 @@ export default function AssignmentsPage() {
   }
 
   const assignments = data.assignments;
-  const openCount = assignments.filter((a) => !a.done).length;
+  const openCount = assignments.filter((a: any) => !a.done).length;
 
   const claim = async (id: string) => {
     setClaimError(null);
@@ -103,7 +103,7 @@ export default function AssignmentsPage() {
           </p>
         ) : (
           <ul className="divide-y divide-border rounded-lg border border-border">
-            {assignments.map((a) => {
+            {assignments.map((a: any) => {
               const overdue = a.dueAt != null && !a.done && a.dueAt < Date.now();
               const href =
                 a.kind === "lesson"
@@ -174,7 +174,7 @@ export default function AssignmentsPage() {
           </p>
         ) : (
           <ul className="space-y-3">
-            {challenges.map((c) => (
+            {challenges.map((c: any) => (
               <ChallengeCard key={c.id} challenge={c} />
             ))}
           </ul>

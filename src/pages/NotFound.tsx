@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router";
 import { ArrowLeft, Home, Map, LayoutDashboard, Search } from "lucide-react";
 import { motion } from "framer-motion";
 import { AppFooter } from "@/components/AppFooter";
+import { useSeo } from "@/lib/seo";
 import { LottieAnimation } from "@/components/ui/lottie-animation";
 
 const NAV_LINKS = [
@@ -16,6 +17,13 @@ const NAV_LINKS = [
  */
 export default function NotFound() {
   const { pathname } = useLocation();
+  // 404 tidak boleh masuk indeks — tapi beri tautan ke halaman publik.
+  useSeo({
+    title: "Halaman Tidak Ditemukan",
+    description: "Halaman yang kamu cari tidak ada. Kembali ke beranda Database Quest Warrior.",
+    path: "/404",
+    robots: "noindex, nofollow",
+  });
 
   return (
     <div className="flex min-h-screen flex-col bg-background">

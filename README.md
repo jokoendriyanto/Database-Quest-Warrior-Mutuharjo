@@ -26,8 +26,10 @@ Gamified database learning platform for SMK students — turning SQL fundamental
   - [Step 4: Deploy to Netlify](#step-4-deploy-to-netlify)
   - [Step 5: Custom Domain Setup](#step-5-custom-domain-setup)
   - [Step 6: Post-Deployment Checklist](#step-6-post-deployment-checklist)
+  - [Step 7: Deploy to Webuzo Panel (VPS)](#step-7-deploy-to-webuzo-panel-vps)
 - [Environment Variables Reference](#environment-variables-reference)
 - [Project Structure](#project-structure)
+- [Seed Data (Dummy Accounts)](#seed-data-dummy-accounts)
 - [Curriculum](#curriculum)
 - [Lottie Animations](#lottie-animations)
 - [Testing Report](#testing-report)
@@ -144,6 +146,19 @@ Part of the **Database Quest** ecosystem, continuing from [Keyboard Warrior: Mut
 - **CSV export** for student data
 - **Password reset** for students
 - **Weekly boss creation** and assignment management
+
+### 🏢 HRD Talent Dashboard
+
+A dedicated module for companies / recruiters to review student competence. Fully **additive** — it reuses the existing exercise-attempt and certificate data instead of duplicating it.
+
+- **Public registration** (`/hrd/register`) — company sign-up that creates the account and promotes it to the `hrd` role in one step
+- **Candidate Pool** — students who explicitly consented (`consentProfile`), with per-competency accuracy, top skills, and certificate counts
+- **Candidate Profile** — Skill Matrix, evidence per competency unit, portfolio items and certificates (each gated by its own consent flag)
+- **Shortlist** — private per company (`saved` → `reviewed` → `shortlisted` → `contacted`)
+- **Company Profile** — industry, website, description
+- **Certificate Verification** — public certificate lookup
+- **Privacy first** — *nothing* is shown without the student's consent; all profile access is written to `hrdActivityLogs` as an audit trail
+- **Least privilege** — HRD can only see consented profiles, and never other companies' shortlists
 
 ### 🎮 Gamification Economy
 
@@ -628,6 +643,30 @@ After deploying, verify everything works:
 
 ---
 
+### Step 7: Deploy to Webuzo Panel (VPS)
+
+Untuk VPS self-hosted dengan panel Webuzo, build hasilnya cukup di-upload ke `public_html` — tidak ada server yang perlu dijalankan, karena output Vite benar-benar statis.
+
+```bash
+# Build di komputer
+bun install
+bun run build
+
+# Upload isi dist/ ke public_html domain Anda
+rsync -avz --delete dist/ user@ip-vps:/home/user/domains/domain-anda/public_html/
+```
+
+Dua hal yang **wajib** dilakukan setelah upload:
+
+1. **Tambahkan `.htaccess`** untuk SPA routing. Tanpa itu, membuka `https://domain-anda/hrd/register` langsung akan 404, walaupun halamannya ada. Gunakan `RewriteRule . /index.html [L]`.
+2. **Aktifkan SSL** lewat menu Let's Encrypt di Webuzo.
+
+> Build command di hosting yang tidak menyediakan `node_modules/.bin` di `PATH` akan gagal dengan `sh: 1: vite: not found`. Jalankan langsung lewat file binernya: `node ./node_modules/vite/bin/vite.js build`.
+
+📖 **Panduan lengkap: [`docs/DEPLOY-WEBUZO.md`](docs/DEPLOY-WEBUZO.md)** — mencakup dua metode build, template `.htaccess` lengkap, konfigurasi NGINX, pengaturan cache, checklist verifikasi, dan troubleshooting.
+
+---
+
 ## Environment Variables Reference
 
 ### Client-side (Vite — Frontend)
@@ -744,6 +783,36 @@ convex/
     ├── dataModel.ts
     └── server.ts
 ```
+
+---
+
+## Seed Data (Dummy Accounts)
+
+Seeder untuk data demo. Semua idempotent — aman dijalankan berkali-kali.
+
+```bash
+# Semua data: 6 kelas, admin, guru, 12 siswa dummy, kelas XI PPLG 2 penuh 35 siswa,
+# Weekly Boss minggu berjalan
+bunx convex run seed:seedAll
+
+# Akun perusahaan demo + data perusahaannya (dibutuhkan agar /hrd tidak kosong)
+bunx convex run seed:seedHrdDemo
+
+# Kandidat dummy untuk Talent Dashboard: Talent Profile + consent, attempt lintas
+# world, portfolio, dan sertifikat
+bunx convex run seed:seedHrdCandidates
+```
+
+| Akun | Email | Password |
+|---|---|---|
+| Admin | `admin@mutuharjo.sch.id` | `admin12345` |
+| Guru | `guru@mutuharjo.sch.id` | `guru12345` |
+| Siswa | `andi01` … `lukman12` `@siswa.mutuharjo.id` | `siswa12345` |
+| **HRD (perusahaan)** | `hrd.demo@mutuharjo.sch.id` | `hrd12345` |
+
+> **Order matters:** `seedHrdCandidates` memakai siswa yang sudah ada dari `seedAll`. Kalau `seedAll` belum pernah dijalankan, hasilnya akan melaporkan email yang tidak ditemukan di field `missing`.
+>
+> `seedAll` menulis ulang attempt siswa. Kalau sudah menjalankan `seedHrdCandidates`, **jangan** jalankan `seedAll` lagi agar Skill Matrix tetap konsisten.
 
 ---
 
@@ -916,32 +985,67 @@ bun convex login
 bun convex dev --once
 ```
 
-#### 3. "Failed to connect / CONVEX Q(...) Server Error"
+#### 3. `[CONVEX Q(fn)] Server Error` on a specific function
+
+Convex menampilkan pesan ini untuk **dua** hal berbeda, sehingga penyebabnya sering tidak jelas:
+
+1. **Function belum di-deploy** — cek dengan memanggil nama yang pasti tidak ada. Kalau hasilnya sama persis, berarti function Anda memang belum ada di deployment.
+2. **Query yang menulis ke database** — Convex **melarang** query melakukan `ctx.db.insert/patch/replace/delete`. Query yang butuh menulis harus dipindah ke `mutation`, lalu dipanggil dari klien setelah query terkait sukses.
+
+```bash
+# Diagnosa cepat: apakah function-nya ada?
+curl -s -X POST "$CONVEX_URL/api/query" \
+  -H 'Content-Type: application/json' \
+  -d '{"path":"namaModule:fungsiYangTidakAda","args":{},"format":"json"}'
+# Kalau balasannya identik dengan error Anda → function belum ter-deploy
+```
+
+> Contoh nyata di repo ini: `hrd:candidateProfile` sempat selalu gagal karena memanggil `logActivity` (yang melakukan `db.insert`) dari dalam sebuah query. Jejak auditnya kini dikirim lewat mutasi `hrd:logHrdActivity`.
+
+#### 4. `[CONVEX M(auth:signIn)] Server Error` — login gagal total
+
+Kalau **pendaftaran akun baru maupun sign-in** sama-sama gagal (termasuk dengan akun yang passwordnya benar), jangan berputar di sisi kode. Kemungkinan besar env `JWKS` belum terpasang di deployment, sehingga token tidak bisa ditandatangani:
+
+```bash
+npx convex auth list   # cek JWKS
+npx convex auth add    # pasang bila belum ada
+```
+
+#### 5. "Failed to connect / CONVEX Q(...) Server Error"
 
 - Buka `src/lib/convex-url.ts` — pastikan `CONVEX_URL` menunjuk deployment kamu yang sehat
 - Cek kesehatan backend: `npx convex run classes:list` (harus balas `[]`, bukan error)
 - Pastikan env auth ter-set di deployment: `SITE_URL`, `JWT_PRIVATE_KEY`, `JWKS`
 
-#### 4. Blank Page After Deploy
+#### 6. Blank Page After Deploy
 
 - Check Vercel/Netlify build logs for errors
 - Hard refresh (`Ctrl+Shift+R`) — bundle lama bisa tersangkut di cache browser
 - Check browser console for errors
 - Verify Convex functions are deployed (Convex Dashboard)
 
-#### 5. Auth Not Working on Production
+#### 7. Auth Not Working on Production
 
 - Update `SITE_URL` in Convex Dashboard → Settings → Environment Variables
 - Add production URL to Convex Auth → Settings → Allowed redirect URLs
 - Ensure `VITE_CONVEX_SITE_URL` is set in hosting dashboard
 
-#### 6. 404 on Page Refresh (Client-Side Routing)
+#### 8. 404 on Page Refresh (Client-Side Routing)
 
 Ensure your hosting platform redirects all routes to `index.html`:
 
 **Vercel:** Add `vercel.json` (see Step 3.6)
 **Netlify:** Add `netlify.toml` (see Step 4.4)
 **Cloudflare Pages:** Set "Single Page Application" rewrite rule
+**Webuzo / VPS:** Add `.htaccess` with `RewriteRule . /index.html [L]` — see [`docs/DEPLOY-WEBUZO.md`](docs/DEPLOY-WEBUZO.md)
+
+#### 9. `sh: 1: vite: not found` saat build di server
+
+`node_modules/.bin` tidak ada di `PATH` pada hosting berbasis Node.js. Jalankan build lewat file binernya:
+
+```bash
+node ./node_modules/vite/bin/vite.js build
+```
 
 #### 7. TypeScript Errors After Clone
 

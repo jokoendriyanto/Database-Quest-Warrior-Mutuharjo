@@ -277,7 +277,7 @@ export default function ClassroomMode({ role }: Props) {
           <p className="text-sm text-muted-foreground">Menunggu siswa bergabung...</p>
         ) : (
           <ol className="space-y-1.5">
-            {session.participants.map((p, i) => (
+            {session.participants.map((p: any, i: any) => (
               <li key={p.userId} className={cn(
                 "flex items-center gap-2 rounded px-3 py-2 text-sm transition-colors",
                 i === 0 && p.correct ? "bg-success/5 border border-success/20" : "bg-secondary/40",

@@ -63,7 +63,7 @@ export default function PasswordResetPanel() {
                 <SelectValue placeholder={students.length ? "Pilih siswa…" : "Belum ada siswa"} />
               </SelectTrigger>
               <SelectContent>
-                {students.map((s) => (
+                {students.map((s: any) => (
                   <SelectItem key={s.userId} value={String(s.userId)}>
                     {s.name} · {s.className || "tanpa kelas"} (@{s.username})
                   </SelectItem>

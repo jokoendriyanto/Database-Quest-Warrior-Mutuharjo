@@ -510,16 +510,16 @@ export default function TeacherPage() {
                   <div>
                     <p className="kicker mb-2">TOPIK PALING SERING GAGAL</p>
                     <ul className="space-y-1.5">
-                      {q.insights.slice(0, 3).map((i) => {
-                        const ex = getExercise(i.exerciseId);
+                      {q.insights.slice(0, 3).map((v: any) => {
+                        const ex = getExercise(v.exerciseId);
                         return (
-                          <li key={i.exerciseId} className="flex items-center gap-3 text-sm">
-                            <span className="min-w-0 flex-1 truncate">{ex?.title ?? i.exerciseId}</span>
+                          <li key={v.exerciseId} className="flex items-center gap-3 text-sm">
+                            <span className="min-w-0 flex-1 truncate">{ex?.title ?? v.exerciseId}</span>
                             <span className="w-24 shrink-0 font-mono text-[11px] text-muted-foreground">
-                              {i.attempts}× dicoba
+                              {v.attempts}× dicoba
                             </span>
                             <span className="w-12 shrink-0 text-right font-mono text-xs font-bold text-warning">
-                              {i.failRate}%
+                              {v.failRate}%
                             </span>
                           </li>
                         );
@@ -671,7 +671,7 @@ export default function TeacherPage() {
                         <tr key={s.userId} className="border-b border-border/50 last:border-0">
                           <td className="whitespace-nowrap px-3 py-1.5 font-medium">{s.name.split(" ")[0]}</td>
                           {matrixWorlds.map((w) => {
-                            const cell = (s.worldSkills ?? []).find((x) => x.worldNum === w);
+                            const cell = (s.worldSkills ?? []).find((x: any) => x.worldNum === w);
                             return (
                               <td
                                 key={w}

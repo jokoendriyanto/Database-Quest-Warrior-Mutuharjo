@@ -27,7 +27,7 @@ export default function DailyQuests() {
       </div>
 
       <div className="space-y-2">
-        {data.quests.map((quest, idx) => {
+        {data.quests.map((quest: any, idx: any) => {
           const isCompleted = progress.completed.includes(quest.id);
           const _progress = progress.progress[quest.id] ?? 0;
 

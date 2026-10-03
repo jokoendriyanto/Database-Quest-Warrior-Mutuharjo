@@ -9,11 +9,18 @@ import { AVATAR_OPTIONS } from "@/lib/game";
 import { Loader2, PartyPopper, ArrowRight, Flame, Trophy, Swords, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AvatarUpload } from "@/components/AvatarUpload";
+import { useSeo } from "@/lib/seo";
 import { LottieAnimation, QuerySuccessAnimation } from "@/components/ui/lottie-animation";
 import { runSql } from "@/lib/sql/engine";
 import { exerciseDataset } from "@/lib/curriculum";
 
 export default function Onboarding() {
+  useSeo({
+    title: "Onboarding",
+    description: "Pengaturan awal akun Database Quest Warrior.",
+    path: "/onboarding",
+    robots: "noindex, nofollow",
+  });
   const { user, isLoading } = useAuth();
   const navigate = useNavigate();
   const updateProfile = useMutation(api.profile.updateProfile);
@@ -283,7 +290,7 @@ SELECT * FROM journey WHERE student = '${firstName.toLowerCase()}';`}
       </main>
 
       <footer className="relative z-10 pb-6 text-center text-xs text-muted-foreground">
-        Made With Love By MrStepen ( Joko Endriyanto )
+        Made With Love By ♥ MutuDev Team
       </footer>
     </div>
   );

@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppFooter } from "@/components/AppFooter";
+import { useSeo } from "@/lib/seo";
 import { WORLDS } from "@/lib/curriculum";
 import {
   LottieAnimation,
@@ -25,6 +26,13 @@ const fadeUp = {
 };
 
 export default function Landing() {
+  useSeo({
+    title: "Belajar SQL & Database dengan Cara yang Lebih Seru",
+    description:
+      "Belajar SQL dan database untuk siswa SMK lewat materi interaktif, latihan query SQL online, studi kasus, dan battle kompetitif — gratis di Database Quest Warrior.",
+    path: "/",
+  });
+
   return (
     <div className="min-h-screen bg-background">
       {/* ------------------------------- NAVBAR ------------------------------ */}
@@ -36,7 +44,7 @@ export default function Landing() {
               Database Quest Warrior<span className="text-muted-foreground">: Mutuharjo</span>
             </span>
           </Link>
-          <nav className="hidden items-center gap-6 text-sm font-semibold text-muted-foreground md:flex">
+          <nav aria-label="Navigasi utama" className="hidden items-center gap-6 text-sm font-semibold text-muted-foreground md:flex">
             <a href="#belajar" className="hover:text-foreground">Belajar</a>
             <a href="#playground" className="hover:text-foreground">Playground</a>
             <a href="#arena" className="hover:text-foreground">Arena</a>
@@ -61,9 +69,12 @@ export default function Landing() {
           <div>
             <p className="kicker">Platform belajar database · SMK PPLG</p>
             <h1 className="mt-4 text-4xl font-black uppercase leading-[1.05] tracking-tight sm:text-5xl">
-              Database Quest Warrior<span className="text-muted-foreground">:</span>{" "}
-              <span className="text-primary">Mutuharjo</span>
+              Belajar SQL &amp; Database{" "}
+              <span className="text-primary">dengan Cara yang Lebih Seru</span>
             </h1>
+            <p className="mt-4 font-mono text-sm font-bold tracking-wide text-muted-foreground">
+              Database Quest Warrior<span className="text-muted-foreground">:</span> Mutuharjo
+            </p>
             <p className="mt-5 text-lg font-bold leading-snug">
               Belajar SQL.
               <br />
@@ -240,9 +251,9 @@ INNER JOIN classes c
           {/* world rail — world numbering system sebagai identitas */}
           <div className="mt-12">
             <p className="kicker">15 world · dari nol sampai developer mindset</p>
-            <div className="mt-4 flex gap-2 overflow-x-auto pb-2">
+            <ul className="mt-4 flex gap-2 overflow-x-auto pb-2">
               {WORLDS.map((w) => (
-                <div
+                <li
                   key={w.num}
                   className="panel w-44 shrink-0 p-3 transition-colors hover:border-muted-foreground/40"
                 >
@@ -253,9 +264,9 @@ INNER JOIN classes c
                   <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-muted-foreground">
                     {w.subtitle}
                   </p>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
         </div>
       </section>
@@ -266,7 +277,7 @@ INNER JOIN classes c
           <motion.div {...fadeUp}>
             <p className="kicker">Case study</p>
             <div className="mt-3 flex items-baseline gap-3">
-              <h2 className="font-mono text-sm font-bold tracking-widest text-muted-foreground">CASE 04</h2>
+              <p className="font-mono text-sm font-bold tracking-widest text-muted-foreground">CASE 04</p>
               <h2 className="text-2xl font-extrabold tracking-tight sm:text-3xl">KANTIN SEKOLAH</h2>
               <span className="rounded border border-warning/40 bg-warning/10 px-2 py-0.5 font-mono text-[10px] font-bold text-warning">
                 NORMAL
@@ -560,6 +571,56 @@ LIMIT 5;`}
                 </tbody>
               </table>
             </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ------------------------------ KONTEN SEO ---------------------------- */}
+      <section id="topik" aria-labelledby="topik-sql" className="border-b border-border bg-secondary/50">
+        <div className="mx-auto max-w-[1440px] px-4 py-16 sm:px-6">
+          <motion.div {...fadeUp}>
+            <p className="kicker">Apa yang kamu pelajari</p>
+            <h2 id="topik-sql" className="mt-2 max-w-xl text-2xl font-extrabold tracking-tight sm:text-3xl">
+              Materi SQL dan database untuk SMK, dari dasar sampai mahir
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+              Semua topik inti basis data diajarkan lewat praktik langsung: kamu menulis
+              query di playground, melihat hasilnya baris per baris, lalu menguji pemahaman
+              lewat kuis dan battle. Detail tiap topik ada di{" "}
+              <Link to="/materi" className="font-semibold text-primary hover:underline">
+                halaman materi SQL untuk SMK
+              </Link>
+              .
+            </p>
+          </motion.div>
+          <ul className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              { q: "SELECT * FROM students;", d: "Mengambil data: SELECT kolom tertentu atau seluruh tabel." },
+              { q: "WHERE nilai > 75;", d: "Menyaring baris dengan kondisi: =, LIKE, IN, BETWEEN." },
+              { q: "ORDER BY nilai DESC;", d: "Mengurutkan hasil — dasar dari leaderboard dan rekap." },
+              { q: "GROUP BY kelas;", d: "Agregasi per kelompok: COUNT, SUM, AVG untuk laporan." },
+              { q: "INNER JOIN classes ...", d: "Menggabungkan tabel: data siswa + kelas + nilai." },
+              { q: "INSERT INTO students ...", d: "Menambah, mengubah, menghapus data (INSERT, UPDATE, DELETE)." },
+            ].map((t) => (
+              <motion.li key={t.q} {...fadeUp} className="panel p-4">
+                <pre className="font-mono text-xs font-semibold text-primary">{t.q}</pre>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t.d}</p>
+              </motion.li>
+            ))}
+          </ul>
+          <motion.div {...fadeUp} className="mt-8 flex flex-wrap gap-3">
+            <Button asChild className="font-bold">
+              <Link to="/materi">Materi SQL untuk SMK</Link>
+            </Button>
+            <Button asChild variant="secondary" className="font-bold">
+              <Link to="/latihan">Latihan query SQL online</Link>
+            </Button>
+            <Button asChild variant="secondary" className="font-bold">
+              <Link to="/studi-kasus">Studi kasus database</Link>
+            </Button>
+            <Button asChild variant="ghost" className="font-bold">
+              <Link to="/tentang">Tentang Database Quest Warrior</Link>
+            </Button>
           </motion.div>
         </div>
       </section>

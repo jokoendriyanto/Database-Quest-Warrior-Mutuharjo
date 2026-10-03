@@ -19,6 +19,7 @@ const ROLE_LABEL: Record<string, string> = {
   student: "Siswa",
   user: "User",
   member: "Member",
+  hrd: "HRD",
 };
 
 export default function AdminPage() {
@@ -36,7 +37,7 @@ export default function AdminPage() {
     const needle = q.trim().toLowerCase();
     if (!needle) return users.users;
     return users.users.filter(
-      (u) =>
+      (u: any) =>
         u.name.toLowerCase().includes(needle) ||
         u.username.toLowerCase().includes(needle) ||
         u.email.toLowerCase().includes(needle) ||
@@ -97,7 +98,7 @@ export default function AdminPage() {
         <section aria-labelledby="dist-h">
           <h2 id="dist-h" className="kicker mb-3">DISTRIBUSI SISWA PER KELAS</h2>
           <div className="flex flex-wrap gap-2">
-            {o.perClass.map((c) => (
+            {o.perClass.map((c: any) => (
               <span
                 key={c.name}
                 className="rounded-md border border-border bg-card px-3 py-1.5 font-mono text-xs"
@@ -141,7 +142,7 @@ export default function AdminPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((u) => (
+              {filtered.map((u: any) => (
                 <tr key={u.id} className="border-b border-border/50 last:border-0 hover:bg-secondary/40">
                   <td className="px-3 py-2">
                     <span aria-hidden className="mr-1.5">{u.avatarEmoji}</span>
@@ -171,7 +172,7 @@ export default function AdminPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__none">(tanpa kelas)</SelectItem>
-                        {(classes ?? []).map((c) => (
+                        {(classes ?? []).map((c: any) => (
                           <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
                         ))}
                       </SelectContent>
@@ -199,7 +200,7 @@ export default function AdminPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {["student", "teacher", "admin"].map((r) => (
+                        {["student", "teacher", "admin", "hrd"].map((r) => (
                           <SelectItem key={r} value={r}>{ROLE_LABEL[r]}</SelectItem>
                         ))}
                       </SelectContent>

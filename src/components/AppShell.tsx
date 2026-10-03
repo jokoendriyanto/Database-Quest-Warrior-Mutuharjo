@@ -23,6 +23,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/hooks/use-theme";
 import { levelProgress, rankFromLevel } from "@/lib/game";
 import { cn } from "@/lib/utils";
+import { useSeo } from "@/lib/seo";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { SparkleAnimation, LottieAnimation } from "@/components/ui/lottie-animation";
 
@@ -57,7 +58,6 @@ const NAV_GROUPS: { group: string; items: NavItem[] }[] = [
   },
 ];
 
-/** Tab cepat di topbar — urutan akses paling sering. */
 const QUICK_TABS: NavItem[] = [
   NAV_GROUPS[0].items[0], // Dashboard
   NAV_GROUPS[0].items[1], // Learn
@@ -144,6 +144,13 @@ function SignOutButton({ onDone }: { onDone: () => void }) {
 }
 
 export function AppShell() {
+  // Halaman privat (butuh login): selalu noindex agar tidak masuk indeks mesin pencari.
+  useSeo({
+    title: "Dashboard Siswa",
+    description: "Area terproteksi Database Quest Warrior untuk siswa dan guru.",
+    path: "/dashboard",
+    robots: "noindex, nofollow",
+  });
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const isTeacher = user?.role === "teacher" || user?.role === "admin";
@@ -425,10 +432,9 @@ function AppShellFooter() {
         </nav>
         <div className="text-xs">
           <p className="text-muted-foreground">
-            Made With{" "}
-            <span aria-hidden className="text-battle">♥</span> By MrStepen
+            Made With Love By{" "}
+            <span aria-hidden className="text-battle">♥</span> MutuDev Team
           </p>
-          <p className="text-muted-foreground">( Joko Endriyanto )</p>
           <p className="mt-1.5 font-mono text-[10px] text-muted-foreground/70">
             © 2026 Database Quest Warrior: Mutuharjo
           </p>

@@ -92,7 +92,7 @@ export default function Dashboard() {
   const missionsDone = missions.filter((m) => m.done).length;
 
   /* ---- skill rows dari attempt nyata ---- */
-  const skills = data.skillStats.map((s) => ({
+  const skills = data.skillStats.map((s: any) => ({
     name: WORLD_SKILL[s.worldNum] ?? `WORLD ${s.worldNum}`,
     pct: s.accuracy,
     attempts: s.attempts,
@@ -433,7 +433,7 @@ export default function Dashboard() {
             </p>
           ) : (
             <ul className="panel divide-y divide-border">
-              {skills.map((s) => (
+              {skills.map((s: any) => (
                 <li key={s.name} className="flex items-center gap-3 px-4 py-2.5">
                   <span className="w-20 shrink-0 font-mono text-xs font-semibold">{s.name}</span>
                   <div className="inset-track flex-1">
@@ -460,7 +460,7 @@ export default function Dashboard() {
             </p>
           ) : (
             <ul className="panel divide-y divide-border">
-              {data.recentAttempts.slice(0, 6).map((a, i) => {
+              {data.recentAttempts.slice(0, 6).map((a: any, i: number) => {
                 const ex = getExercise(a.exerciseId);
                 return (
                   <li key={i} className="flex items-center gap-3 px-4 py-2.5 text-sm">
