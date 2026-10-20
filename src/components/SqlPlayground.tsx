@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Exercise } from "@/lib/curriculum";
@@ -18,12 +18,6 @@ import {
 import { cn } from "@/lib/utils";
 
 /* ------------------------- schema explorer types ------------------------ */
-
-interface ColumnInfo {
-  name: string;
-  /** "# " PK · "↗ " FK · "A " text · "123 " angka */
-  marker: string;
-}
 
 function columnMarker(col: string, sampleRow?: Record<string, unknown>): string {
   if (col === "id") return "#";
@@ -386,11 +380,13 @@ export function SqlPlayground({
             ))}
           </ul>
           <div className="mt-2.5 flex flex-wrap gap-1.5">
-            {hintsShown < 4 && (
+            {hintsShown < exercise.hints.length && (
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => setHintsShown((n) => Math.min(4, n + 1))}
+                onClick={() =>
+                  setHintsShown((n) => Math.min(exercise.hints.length, n + 1))
+                }
               >
                 <Lightbulb className="size-3.5" /> Buka hint berikutnya
               </Button>

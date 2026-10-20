@@ -77,7 +77,7 @@ Part of the **Database Quest** ecosystem, continuing from [Keyboard Warrior: Mut
 
 - **15 Worlds** covering the full SQL curriculum (Database Basics → Security)
 - **38+ interactive lessons** with rich content blocks: headings, text, code, callouts, analogies, inline quizzes
-- **30+ hands-on exercises** with SQL sandbox execution, instant feedback, hint system (4-level)
+- **30+ hands-on exercises** with SQL sandbox execution, instant feedback, hint system (3-level — tanpa bocoran query jawaban)
 - **Progressive world unlocking** — complete all lessons in a world to unlock the next
 - **XP system** with level progression, rank titles (Database Rookie → Grandmaster), and badge collection (25+ unique badges)
 
