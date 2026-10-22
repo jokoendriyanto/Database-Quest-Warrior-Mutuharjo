@@ -147,6 +147,30 @@ Part of the **Database Quest** ecosystem, continuing from [Keyboard Warrior: Mut
 - **Password reset** for students
 - **Weekly boss creation** and assignment management
 
+### 🤖 AI Mentor (Progressive Hints)
+
+Tiered, Socratic hints inside the SQL playground: **guidance, not answers**. The teacher configures the LLM provider once, students just press **Minta Petunjuk**.
+
+- **Three hint levels**: 1 *Orientasi* (reflective question), 2 *Struktur* (one table vs JOIN, WHERE/GROUP BY concepts), 3 *Fokus* (points at the broken area without writing the fix)
+- **Never-rules (PRD §8.4)**: the model may not return a complete query, a `column = value` answer pair, or phrases like *jawabannya adalah*. A server-side post-filter (`postFilterOutput`) rejects any violating output, and a rejected hint is **not** counted as used
+- **Server-side eligibility**: 2 failed attempts, hints taken in order (1 → 2 → 3), 20 s cooldown, max 3 hints per case, 30 hints/student/day — all enforced in `convex/mentor.ts`, so the client cannot bypass them
+- **Cost control**: the XP-multiplier penalty for using hints is applied server-side, and the `AI_MENTOR_ENABLED` feature flag defaults to **off** (panel hides itself until a provider is configured)
+- **Evidence chain**: every hint records prompt, response, model, profile id, tokens and latency in `mentorHints` — the ASSA evidence trail
+- **Teacher help card**: after 3 hints + 5 failed attempts the panel offers *Minta bantuan guru* with a copyable summary
+- **Privacy (PRD §10.2)**: prompts carry case description, table schema, last query/error and hint history — never student name, email or username; student text is passed as labelled data, not instructions
+- Out-of-scope questions are politely redirected back to the case
+
+### ⚙️ Pengaturan Model AI (Teacher Settings)
+
+A new teacher tab **Pengaturan Model AI** for any OpenAI-compatible provider: OpenAI, Groq, OpenRouter, Together, DeepSeek, or a local Ollama / LM Studio endpoint.
+
+- **Presets + custom base URL** with validation (HTTPS required except `localhost` / `127.0.0.1` / `*.local`)
+- **API key security**: AES-256-GCM at rest (`v1:iv:tag:cipher`, master key from `APP_ENCRYPTION_KEY`); the browser only ever receives `api_key_last4`; the input is `type=password` with a show/hide toggle inside the form only
+- **Edit semantics**: saving without re-entering the key leaves the stored ciphertext byte-identical; sending a new key re-encrypts with a fresh IV
+- **Tes Koneksi** and **Ambil daftar model** run entirely server-side (`"use node"` actions) with actionable Indonesian error messages (PRD §9.5)
+- **Exactly one active profile**, enforced in a single transaction; the active profile cannot be deleted (`profile_active`)
+- **Audit trail**: every create/update/delete/activate/connection test lands in `aiSettingsAudit` with no key material in the detail
+
 ### 🏢 HRD Talent Dashboard
 
 A dedicated module for companies / recruiters to review student competence. Fully **additive** — it reuses the existing exercise-attempt and certificate data instead of duplicating it.
@@ -207,6 +231,8 @@ Backend (Convex)
 ├── Coin Shop & Daily Quests
 ├── Profile & Avatar Management
 ├── Class Management
+├── AI Mentor (tiered hints, eligibility, never-rules filter)
+├── AI Provider Profiles (AES-256-GCM key vault, connection tests)
 └── Leaderboard (XP, Ranked, per-class, per-semester)
 ```
 
@@ -683,6 +709,11 @@ Dua hal yang **wajib** dilakukan setelah upload:
 | `JWKS` | JSON Web Key Set for auth | Convex Dashboard → Settings |
 | `JWT_PRIVATE_KEY` | JWT signing key | Convex Dashboard → Settings |
 | `SITE_URL` | Application URL for auth callbacks | Convex Dashboard → Settings |
+| `APP_ENCRYPTION_KEY` | Master key for AES-256-GCM encryption of provider API keys (losing it makes stored keys unreadable) | Convex Dashboard → Settings |
+| `AI_MENTOR_ENABLED` | Feature flag: `true` or `1` turns AI Mentor on (default **off**) | Convex Dashboard → Settings |
+| `MENTOR_BASE_URL` | Optional fallback provider base URL when no profile is active | Convex Dashboard → Settings |
+| `MENTOR_API_KEY` | Optional fallback provider key (may be empty for local providers) | Convex Dashboard → Settings |
+| `MENTOR_MODEL` | Optional fallback model | Convex Dashboard → Settings |
 
 > **⚠️ Important:**
 > - Never commit `.env.local` to git (it's in `.gitignore`)
@@ -696,6 +727,7 @@ Dua hal yang **wajib** dilakukan setelah upload:
 ```
 src/
 ├── components/
+│   ├── AiMentorPanel.tsx      # Tiered AI hint panel (playground)
 │   ├── AppFooter.tsx          # Public page footer
 │   ├── AppShell.tsx           # Authenticated app shell (sidebar + topbar)
 │   ├── AvatarUpload.tsx       # Avatar upload with Convex storage
@@ -710,6 +742,7 @@ src/
 │   ├── TournamentArena.tsx    # Tournament bracket UI
 │   ├── WeeklyBossArena.tsx    # Weekly boss challenge UI
 │   ├── teacher/
+│   │   ├── AiSettingsPanel.tsx    # Provider settings tab (PRD §9.9)
 │   │   ├── AssignmentsPanel.tsx
 │   │   ├── ChallengesPanel.tsx
 │   │   ├── ClassesPanel.tsx
@@ -718,6 +751,8 @@ src/
 │   └── ui/                    # shadcn/ui components (30+)
 │       └── lottie-animation.tsx  # Lottie wrapper component
 ├── convex/
+│   ├── aiSettings.ts          # Teacher AI provider profiles + audit
+│   ├── aiSettingsActions.ts   # Node actions: encrypt key, test connection, models
 │   ├── admin.ts               # Admin functions (password reset, setup)
 │   ├── assignments.ts         # Assignment CRUD + verification
 │   ├── auth.ts                # Auth configuration (DO NOT MODIFY)
@@ -729,6 +764,8 @@ src/
 │   ├── game.ts                # Exercise submission, leaderboard, dashboard
 │   ├── gameState.ts           # XP, stats, streak, coins management
 │   ├── http.ts                # HTTP endpoints
+│   ├── mentor.ts              # Hint eligibility, progress, history
+│   ├── mentorActions.ts       # Node action: request hint (LLM + never-rules)
 │   ├── profile.ts             # Profile, avatar, username management
 │   ├── quiz.ts                # Quiz session + anti-cheat
 │   ├── schema.ts              # Database schema
@@ -741,9 +778,12 @@ src/
 │   ├── use-mobile.ts          # Mobile detection
 │   └── use-theme.ts           # Dark mode toggle
 ├── lib/
+│   ├── ai-crypto.ts           # AES-256-GCM vault for provider keys (SERVER ONLY)
+│   ├── ai-provider.ts         # OpenAI-compatible client + never-rules filter
 │   ├── curriculum.ts          # 15 Worlds, lessons, exercises
 │   ├── data/datasets.ts       # School & canteen databases
 │   ├── game.ts                # Levels, ranks, badges, bots, tiers
+│   ├── mentor-context.ts      # Prompt builder, no PII (SERVER ONLY)
 │   ├── quizBank.ts            # 227-question quiz bank (SERVER ONLY)
 │   ├── sounds.ts              # Web Audio sound effects
 │   ├── sql/engine.ts          # Custom SQL engine (~1200 lines)
@@ -916,6 +956,27 @@ import { LottieAnimation } from "@/components/ui/lottie-animation";
 | Convex Codegen (`convex dev --once`) | ✅ Pass (19 modules) |
 | All 125+ source files | ✅ No type errors |
 | Production Build (`vite build`) | ✅ Pass |
+| AI Mentor test suites (never-rules, validation, crypto, key scan, E2E) | ✅ Pass (147/147) |
+
+### AI Mentor & Pengaturan Model AI (Testing Plan §11)
+
+| Suite | Result |
+|-------|--------|
+| Never-rules (PRD §8.4): 20 scenarios (10 leak + 10 control) + 22 filter units | ✅ 42/42 |
+| False-positive regression (valid hints stay visible) | ✅ 11/11 |
+| Static audit: prompt privacy (no PII), em dash, key input, masked list | ✅ 29/29 |
+| Unit: base URL + field range validation, friendly provider messages | ✅ 20/20 |
+| AES-256-GCM roundtrip, tamper detection, `maskLast4` | ✅ 10/10 |
+| Bundle key scan (270 files: `dist/` + `src/`) | ✅ 6/6 |
+| Authenticated acceptance §9.10 (create/edit/activate/delete, student 403, cooldown, live hint) | ✅ 29/29 |
+| **Total** | **147/147** |
+
+Two bugs were found and fixed during this run:
+
+1. The never-rules filter missed `column = value` answer pairs, `UPDATE ... SET` solutions and the phrase *kunci jawaban* — all now rejected (0 leaks, 0 valid hints rejected).
+2. `ProviderError` surfaced the error *kind* (`unknown`) to teachers instead of the readable message for an invalid base URL.
+
+> **Classroom pilot (§11.6)** is intentionally not marked: it needs a real class for 1–2 weeks.
 
 ### Feature Verification
 
@@ -1082,6 +1143,7 @@ bun tsc -b --noEmit
 3. **Single-player First**: Real-time multiplayer (duels) works via Convex reactive queries, but tournament matches are sequential.
 4. **No Mobile App**: Web-only, but fully responsive with bottom navigation.
 5. **Limited Curriculum Data**: Worlds 14, 15 have fewer exercises. Worlds 16+ are planned.
+6. **Em dash cleanup**: all AI Mentor / Pengaturan Model AI files are em-dash free (PRD §10.3), but legacy pages outside this feature (lesson copy, quiz bank, landing) still contain em dashes.
 
 ---
 

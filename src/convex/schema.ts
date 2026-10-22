@@ -107,6 +107,10 @@ const schema = defineSchema(
       hintsUsed: v.number(),
       xpEarned: v.number(),
       at: v.number(),
+      // Pesan error SQL saat eksekusi gagal (PRD AI Mentor 8.8) — bahan
+      // eligibility hint level 3 + evidence ASSA. Opsional: attempt yang
+      // query-nya jalan tapi hasilnya salah tidak punya error.
+      errorMessage: v.optional(v.string()),
     })
       .index("by_user_exercise", ["userId", "exerciseId"])
       .index("by_user", ["userId"]),
@@ -413,6 +417,61 @@ const schema = defineSchema(
       detail: v.optional(v.string()),
       at: v.number(),
     }).index("by_hrd", ["hrdUserId"]),
+
+    /* ==================================================================== */
+    /*  AI MENTOR + PENGATURAN MODEL AI (PRD 20 Okt 2026 — Fase 1)          */
+    /* ==================================================================== */
+
+    // Setiap hint yang dihasilkan AI untuk satu siswa pada satu latihan.
+    // Menyimpan prompt & respons mentah lengkap sebagai evidence ASSA
+    // (rantai: prompt -> hint -> query sebelum/sesudah -> hasil).
+    mentorHints: defineTable({
+      userId: v.id("users"),
+      exerciseId: v.string(),
+      // Attempt yang memicu request hint ini (jejak bukti kelanjutan).
+      attemptId: v.optional(v.id("exerciseAttempts")),
+      // Profil provider yang dipakai (jejak konfigurasi guru saat itu).
+      profileId: v.optional(v.id("aiProviderProfiles")),
+      hintLevel: v.union(v.literal(1), v.literal(2), v.literal(3)),
+      promptText: v.string(), // prompt lengkap yang dikirim ke LLM (evidence)
+      responseText: v.string(), // output AI mentah sebelum filter (evidence)
+      model: v.string(),
+      tokensUsed: v.optional(v.number()), // beberapa provider tidak mengembalikan usage
+      latencyMs: v.number(),
+      createdAt: v.number(),
+    })
+      .index("by_user_exercise", ["userId", "exerciseId"])
+      .index("by_user_created", ["userId", "createdAt"]),
+
+    // Profil konfigurasi provider AI milik guru. Satu profil aktif pada
+    // satu waktu (ditegakkan di mutation activate, bukan partial index).
+    aiProviderProfiles: defineTable({
+      name: v.string(), // maks 64 char, bebas, mis. "Groq - Llama"
+      baseUrl: v.string(), // tanpa trailing slash (dinormalisasi server)
+      // Terenkripsi AES-256-GCM dengan master key env APP_ENCRYPTION_KEY.
+      // NULL untuk provider lokal tanpa key (Ollama/LM Studio).
+      apiKeyEncrypted: v.optional(v.string()),
+      apiKeyLast4: v.optional(v.string()), // satu-satunya bagian key yang tampil di UI/API
+      model: v.string(),
+      temperature: v.number(), // 0.0 - 1.0, default 0.3
+      maxTokens: v.number(), // 50 - 2000, default 200
+      timeoutSeconds: v.number(), // 5 - 60, default 15
+      isActive: v.boolean(),
+      createdBy: v.id("users"),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    })
+      .index("by_active", ["isActive"])
+      .index("by_creator", ["createdBy"]),
+
+    // Audit semua mutasi pengaturan AI. Detail TIDAK PERNAH memuat API key.
+    aiSettingsAudit: defineTable({
+      teacherId: v.id("users"),
+      action: v.string(), // 'create' | 'update' | 'delete' | 'activate' | 'test_ok' | 'test_fail'
+      profileId: v.optional(v.id("aiProviderProfiles")),
+      detail: v.optional(v.string()),
+      createdAt: v.number(),
+    }).index("by_teacher", ["teacherId"]),
   },
   {
     schemaValidation: false,

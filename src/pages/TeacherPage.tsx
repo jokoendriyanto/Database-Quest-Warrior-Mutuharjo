@@ -14,8 +14,9 @@ import ChallengesPanel from "@/components/teacher/ChallengesPanel";
 import PasswordResetPanel from "@/components/teacher/PasswordResetPanel";
 import ClassesPanel from "@/components/teacher/ClassesPanel";
 import WeeklyBossPanel from "@/components/teacher/WeeklyBossPanel";
+import AiSettingsPanel from "@/components/teacher/AiSettingsPanel";
 
-type Tab = "siswa" | "tugas" | "tantangan" | "boss" | "password" | "kelas";
+type Tab = "siswa" | "tugas" | "tantangan" | "boss" | "password" | "kelas" | "ai";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "siswa", label: "Siswa" },
@@ -24,6 +25,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "boss", label: "Weekly Boss" },
   { key: "password", label: "Reset Password" },
   { key: "kelas", label: "Kelas" },
+  { key: "ai", label: "Pengaturan Model AI" },
 ];
 
 type Student = {
@@ -128,7 +130,7 @@ function EditStudentModal({
               onChange={(e) => setClassName(e.target.value)}
               className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
             >
-              <option value="">— Tanpa Kelas —</option>
+              <option value="">Tanpa Kelas</option>
               {classOptions.map((c) => (
                 <option key={c} value={c}>{c}</option>
               ))}
@@ -461,6 +463,7 @@ export default function TeacherPage() {
       {tab === "boss" && <WeeklyBossPanel />}
       {tab === "password" && <PasswordResetPanel />}
       {tab === "kelas" && <ClassesPanel />}
+      {tab === "ai" && <AiSettingsPanel />}
 
       {/* ---------- SISWA ---------- */}
       {tab === "siswa" && (
@@ -469,7 +472,7 @@ export default function TeacherPage() {
       <dl className="grid grid-cols-2 gap-x-8 gap-y-3 border-y border-border py-4 sm:grid-cols-4">
         {[
           ["AKTIF HARI INI", `${activeToday} / ${total}`],
-          ["RATA-RATA ACCURACY", total > 0 ? `${avgAccuracy}%` : "—"],
+          ["RATA-RATA ACCURACY", total > 0 ? `${avgAccuracy}%` : "-"],
           ["PERLU PERHATIAN", String(needAttention)],
           ["BELUM PERNAH MULAI", `${students.filter((s) => s.exercisesDone === 0).length}`],
         ].map(([k, v]) => (
@@ -595,12 +598,12 @@ export default function TeacherPage() {
                           <span className="font-medium">{s.name}</span>
                           <span className="ml-2 text-[10px] text-muted-foreground font-mono">@{s.username}</span>
                         </td>
-                        <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{s.className || "—"}</td>
+                        <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{s.className || "-"}</td>
                         <td className="px-3 py-2 text-right font-mono tabular-nums">{s.level}</td>
                         <td className="px-3 py-2 text-right font-mono tabular-nums">{s.xp.toLocaleString()}</td>
                         <td className="px-3 py-2 text-right font-mono tabular-nums">{s.lessonsCompleted}</td>
                         <td className={cn("px-3 py-2 text-right font-mono tabular-nums", s.exercisesDone >= 3 && s.accuracy < 50 && "text-warning font-bold")}>
-                          {s.exercisesDone > 0 ? `${s.accuracy}%` : "—"}
+                          {s.exercisesDone > 0 ? `${s.accuracy}%` : "-"}
                         </td>
                         <td className="px-3 py-2 text-right font-mono text-xs text-muted-foreground">
                           {s.daysInactive > 900 ? "belum" : s.daysInactive <= 0 ? "hari ini" : `${s.daysInactive}h lalu`}

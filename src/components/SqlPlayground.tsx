@@ -12,10 +12,10 @@ import {
   Play,
   RotateCcw,
   Lightbulb,
-  Eye,
   Send,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AiMentorPanel } from "@/components/AiMentorPanel";
 
 /* ------------------------- schema explorer types ------------------------ */
 
@@ -105,7 +105,7 @@ function ResultTable({
   if (rows.length === 0) {
     return (
       <p className="px-4 py-8 text-center font-mono text-xs text-muted-foreground">
-        0 rows — hasil kosong. Cek lagi syarat WHERE-nya.
+        0 rows, hasil kosong. Cek lagi syarat WHERE-nya.
       </p>
     );
   }
@@ -152,7 +152,7 @@ function ResultTable({
 /* ------------------------------ main layout ----------------------------- */
 
 const HINT_XP = ["100% XP", "90% XP", "75% XP", "50% XP"];
-type MobileTab = "mission" | "schema" | "editor" | "result";
+type MobileTab = "mission" | "schema" | "editor" | "result" | "mentor";
 
 interface HistoryEntry {
   time: string;
@@ -175,7 +175,6 @@ export function SqlPlayground({
 
   const [hintsShown, setHintsShown] = useState(0);
   const [showHints, setShowHints] = useState(false);
-  const [showSolution, setShowSolution] = useState(false);
 
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [mobileTab, setMobileTab] = useState<MobileTab>("editor");
@@ -230,7 +229,7 @@ export function SqlPlayground({
       const res = await submitExercise({
         exerciseId: exercise.id,
         sqlText: sql,
-        hintsUsed: showSolution ? 4 : hintsShown,
+        hintsUsed: hintsShown,
       });
       if (res.correct) {
         playCorrect();
@@ -302,7 +301,7 @@ export function SqlPlayground({
           challenge.sql
         </span>
         <span className="hidden font-mono text-[10px] text-muted-foreground sm:inline">
-          sandbox — data asli aman
+          sandbox, data asli aman
         </span>
       </div>
       <textarea
@@ -366,7 +365,7 @@ export function SqlPlayground({
           <div className="mb-2 flex items-center justify-between">
             <p className="kicker">PROGRESSIVE HINT</p>
             <span className="font-mono text-[10px] text-muted-foreground">
-              {showSolution ? "10% XP" : HINT_XP[Math.min(hintsShown, 3)]}
+              {HINT_XP[Math.min(hintsShown, 3)]}
             </span>
           </div>
           <ul className="space-y-1.5">
@@ -391,22 +390,7 @@ export function SqlPlayground({
                 <Lightbulb className="size-3.5" /> Buka hint berikutnya
               </Button>
             )}
-            {!showSolution && (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setShowSolution(true)}
-                className="text-muted-foreground"
-              >
-                <Eye className="size-3.5" /> Lihat jawaban (XP −90%)
-              </Button>
-            )}
           </div>
-          {showSolution && (
-            <pre className="mt-2.5 overflow-x-auto rounded-md bg-muted p-2.5 font-mono text-xs">
-              {exercise.solution.replace(/;/g, ";\n")}
-            </pre>
-          )}
         </div>
       )}
     </div>
@@ -517,6 +501,7 @@ export function SqlPlayground({
           {missionPanel}
           {editorPanel}
           {feedbackPanel}
+          <AiMentorPanel exerciseId={exercise.id} exerciseTitle={exercise.title} />
           {resultPanel}
           {historyPanel}
         </div>
@@ -557,6 +542,9 @@ export function SqlPlayground({
             </div>
           )}
           {mobileTab === "editor" && editorPanel}
+          {mobileTab === "mentor" && (
+            <AiMentorPanel exerciseId={exercise.id} exerciseTitle={exercise.title} />
+          )}
           {(mobileTab === "result" || mobileTab === "mission") && resultPanel}
           {mobileTab === "result" && feedbackPanel}
         </div>

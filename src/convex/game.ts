@@ -120,6 +120,12 @@ export const submitExercise = mutation({
         hintsUsed: args.hintsUsed,
         xpEarned: 0,
         at: Date.now(),
+        // PRD AI Mentor 8.8: pesan error disimpan sebagai pemicu eligibility
+        // hint level 3 dan bahan evidence. Potong supaya hemat storage.
+        errorMessage: (err instanceof SqlError
+          ? `${err.code}: ${err.message}`
+          : String(err)
+        ).slice(0, 500),
       });
       if (err instanceof SqlError) {
         return {
@@ -174,8 +180,18 @@ export const submitExercise = mutation({
 
     /* benar! hitung XP:
        - hint multiplier: 100% / 90% / 75% / 50% / 25%(lihat jawaban)
-       - repeat completion: cuma 10% dari XP kalau sudah pernah benar */
-    const hintMult = [1, 0.9, 0.75, 0.5, 0.25][args.hintsUsed] ?? 0.25;
+       - repeat completion: cuma 10% dari XP kalau sudah pernah benar
+       - hint AI Mentor ikut dihitung (keputusan mapping D.3): client hanya
+         mengirim jumlah hint statis; jumlah hint AI dihitung server dari
+         tabel mentorHints supaya tidak bisa diakali klien. */
+    const aiHints = await ctx.db
+      .query("mentorHints")
+      .withIndex("by_user_exercise", (q) =>
+        q.eq("userId", userId).eq("exerciseId", args.exerciseId),
+      )
+      .collect();
+    const effectiveHints = Math.min(4, args.hintsUsed + aiHints.length);
+    const hintMult = [1, 0.9, 0.75, 0.5, 0.25][effectiveHints] ?? 0.25;
     const repeatMult = priorCorrect ? 0.1 : 1;
     const xpAwarded = Math.max(5, Math.round(ex.xp * hintMult * repeatMult));
 
@@ -184,7 +200,7 @@ export const submitExercise = mutation({
 
     const extraBadges: string[] = [];
     if (!stats.badges.includes("first_query")) extraBadges.push("first_query");
-    if (args.hintsUsed === 0 && !stats.badges.includes("no_hint")) extraBadges.push("no_hint");
+    if (effectiveHints === 0 && !stats.badges.includes("no_hint")) extraBadges.push("no_hint");
     if (exercisesCorrect >= 10 && !stats.badges.includes("exercise_10")) extraBadges.push("exercise_10");
 
     await ctx.db.patch(stats._id, {
@@ -199,7 +215,9 @@ export const submitExercise = mutation({
     const copy =
       args.hintsUsed === 4
         ? "Berhasil! Lain kali coba tanpa lihat jawaban ya — kamu pasti bisa. 😉"
-        : WIN_COPY[Math.floor(Math.random() * WIN_COPY.length)];
+        : effectiveHints > args.hintsUsed
+          ? "Berhasil! Petunjuk AI memang membantu, tapi next time coba sendiri dulu ya. 🔥"
+          : WIN_COPY[Math.floor(Math.random() * WIN_COPY.length)];
 
     return {
       correct: true as const,
